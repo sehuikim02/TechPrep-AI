@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps-Copilot | 자율형 인프라 치유 AI 에이전트 관제탑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-fast {
+            animation: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <i class="fa-solid fa-brain text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">DevOps-Copilot Control Tower</h1>
+                <p class="text-xs text-slate-400">자율형 인프라 관찰·추론·치유 AI 에이전트</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-ping"></span>
+                에이전트 루프 활성 (3s)
+            </span>
+            <div id="dockerBadge" class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                연결: Simulation Mode
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-8 space-y-8">
+        <!-- Top Row: Server Status & Chaos Sandbox -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 1. 타겟 서버 상태 카드 (2 cols) -->
+            <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-brands fa-docker text-3xl text-cyan-400"></i>
+                        <div>
+                            <h2 class="text-lg font-bold text-white">타겟 컨테이너 상태</h2>
+                            <p class="text-xs text-slate-400">demo-app-server (<span id="containerId">--------</span>)</p>
+                        </div>
+                    </div>
+                    <div id="statusBadge" class="px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        HEALTHY
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                        <div class="text-xs text-slate-400 mb-1">CPU 점유율</div>
+                        <div id="cpuText" class="text-2xl font-black text-cyan-400">0.0%</div>
+                    </div>
+                    <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                        <div class="text-xs text-slate-400 mb-1">메모리 사용률</div>
+                        <div id="memText" class="text-2xl font-black text-indigo-400">0.0%</div>
+                    </div>
+                    <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                        <div class="text-xs text-slate-400 mb-1">자가 복구 횟수</div>
+                        <div id="restartCount" class="text-2xl font-black text-emerald-400">0 회</div>
+                    </div>
+                    <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                        <div class="text-xs text-slate-400 mb-1">Uptime</div>
+                        <div id="uptimeText" class="text-2xl font-black text-slate-300">0s</div>
+                    </div>
+                </div>
+
+                <div id="errorMessageBanner" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="errorDetails">이상 징후 없음</span>
+                </div>
+            </div>
+
+            <!-- 2. 장애 주입 샌드박스 (1 col) -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i class="fa-solid fa-biohazard text-xl text-amber-400"></i>
+                        <h2 class="text-lg font-bold text-white">카오스 샌드박스</h2>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-6">시연 및 테스트를 위해 의도적 장애를 주입합니다. 에이전트가 이를 실시간으로 감지하고 복구합니다.</p>
+                    
+                    <div class="space-y-3">
+                        <button onclick="injectChaos('KILL_CONTAINER')" class="w-full bg-slate-800 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500 text-slate-200 hover:text-rose-300 p-3 rounded-xl text-sm font-semibold transition flex items-center justify-between group">
+                            <span><i class="fa-solid fa-power-off text-rose-400 mr-2"></i>컨테이너 강제 종료 (SIGKILL)</span>
+                            <i class="fa-solid fa-bolt text-xs opacity-0 group-hover:opacity-100 transition"></i>
+                        </button>
+                        <button onclick="injectChaos('OOM_LEAK')" class="w-full bg-slate-800 hover:bg-amber-950/60 border border-slate-700 hover:border-amber-500 text-slate-200 hover:text-amber-300 p-3 rounded-xl text-sm font-semibold transition flex items-center justify-between group">
+                            <span><i class="fa-solid fa-memory text-amber-400 mr-2"></i>메모리 누수 유발 (OOM Crash)</span>
+                            <i class="fa-solid fa-bolt text-xs opacity-0 group-hover:opacity-100 transition"></i>
+                        </button>
+                        <button onclick="injectChaos('ERROR_500')" class="w-full bg-slate-800 hover:bg-purple-950/60 border border-slate-700 hover:border-purple-500 text-slate-200 hover:text-purple-300 p-3 rounded-xl text-sm font-semibold transition flex items-center justify-between group">
+                            <span><i class="fa-solid fa-server text-purple-400 mr-2"></i>DB 커넥션 풀 고갈 (500 Error)</span>
+                            <i class="fa-solid fa-bolt text-xs opacity-0 group-hover:opacity-100 transition"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-6 text-center">
+                    장애 발생 시 3초 이내 에이전트의 Reason & Act 파이프라인 가동
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: AI Reasoning & Audit Log Stream -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-list-check text-xl text-indigo-400"></i>
+                    <h2 class="text-lg font-bold text-white">AI 에이전트 사고 과정 및 감사 로그 (Sense → Reason → Act)</h2>
+                </div>
+                <button onclick="fetchLogs()" class="text-xs text-slate-400 hover:text-white transition flex items-center space-x-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>새로고침</span>
+                </button>
+            </div>
+
+            <!-- Log Stream Container -->
+            <div id="logStream" class="h-96 overflow-y-auto space-y-2 pr-2 font-mono text-xs">
+                <!-- Log Items will be rendered here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/status`);
+                const data = await res.json();
+
+                document.getElementById('containerId').innerText = data.container_id;
+                document.getElementById('cpuText').innerText = `${data.cpu_percent}%`;
+                document.getElementById('memText').innerText = `${data.memory_percent}%`;
+                document.getElementById('restartCount').innerText = `${data.restart_count} 회`;
+                document.getElementById('uptimeText').innerText = `${data.uptime_seconds}s`;
+
+                const badge = document.getElementById('statusBadge');
+                badge.innerText = data.status;
+                badge.className = "px-4 py-1.5 rounded-full text-sm font-bold border transition ";
+
+                const errBanner = document.getElementById('errorMessageBanner');
+                if (data.status === 'HEALTHY') {
+                    badge.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/30');
+                    errBanner.classList.add('hidden');
+                } else if (data.status === 'HEALING') {
+                    badge.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/30', 'animate-pulse-fast');
+                    errBanner.classList.remove('hidden');
+                    document.getElementById('errorDetails').innerText = `치유 진행 중... (${data.last_error || ''})`;
+                } else {
+                    badge.classList.add('bg-rose-500/20', 'text-rose-400', 'border-rose-500/30', 'animate-bounce');
+                    errBanner.classList.remove('hidden');
+                    document.getElementById('errorDetails').innerText = `장애 발생: ${data.last_error || 'Critical Error'}`;
+                }
+
+                if (data.docker_connected) {
+                    document.getElementById('dockerBadge').innerText = "엔진: Docker Engine Live";
+                    document.getElementById('dockerBadge').className = "text-xs text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-700/50";
+                }
+            } catch (err) {
+                console.error("Status fetch error", err);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch(`${API_BASE}/api/logs`);
+                const logs = await res.json();
+                const container = document.getElementById('logStream');
+                container.innerHTML = logs.map(log => {
+                    let phaseColor = "text-slate-400";
+                    let phaseBg = "bg-slate-800";
+                    if (log.phase === 'SENSE') { phaseColor = "text-cyan-400"; phaseBg = "bg-cyan-950/50 border border-cyan-800/40"; }
+                    if (log.phase === 'REASON') { phaseColor = "text-amber-400"; phaseBg = "bg-amber-950/50 border border-amber-800/40"; }
+                    if (log.phase === 'ACT') { phaseColor = "text-purple-400"; phaseBg = "bg-purple-950/50 border border-purple-800/40"; }
+                    if (log.phase === 'AUDIT') { phaseColor = "text-emerald-400"; phaseBg = "bg-emerald-950/50 border border-emerald-800/40"; }
+
+                    return `
+                        <div class="p-2.5 rounded-lg ${phaseBg} flex items-start space-x-3 transition hover:bg-slate-800/80">
+                            <span class="text-slate-500 select-none">${log.timestamp}</span>
+                            <span class="font-bold ${phaseColor} px-1.5 py-0.5 rounded text-[10px] bg-slate-900 select-none">[${log.phase}]</span>
+                            <span class="text-slate-200 flex-1">${log.message}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Logs fetch error", err);
+            }
+        }
+
+        async function injectChaos(faultType) {
+            try {
+                await fetch(`${API_BASE}/api/chaos/inject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fault_type: faultType })
+                });
+                fetchStatus();
+                fetchLogs();
+            } catch (err) {
+                alert("장애 주입 실패: " + err);
+            }
+        }
+
+        // 1초 주기로 실시간 폴링
+        setInterval(() => {
+            fetchStatus();
+            fetchLogs();
+        }, 1000);
+
+        fetchStatus();
+        fetchLogs();
+    </script>
+</body>
+</html>
