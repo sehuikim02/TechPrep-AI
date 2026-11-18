@@ -978,7 +978,24 @@
                 };
             }
 
-            if (low.includes('모르겠') || low.includes('막막') || low.includes('방황') || low.includes('어떡') || low.includes('무엇을') || low.includes('어떤걸') || low.includes('불안')) {
+            if (low.includes('llm') || low.includes('rag') || low.includes('생성형') || low.includes('프롬프트') || low.includes('에이전트') || low.includes('agent')) {
+                return {
+                    reply: "🤖 <strong>[시니어 면접관 코칭: LLM & RAG 실무 경험 어필 가이드]</strong><br><br>" +
+                           "정말 트렌디하고 강력한 무기입니다! 면접관이 LLM/RAG 프로젝트를 볼 때 가장 관심 있게 보는 것은 '단순히 API를 호출해 봤는가'가 아니라, <strong>'LLM의 한계(비용, 지연 시간, 환각)를 시스템 아키텍처로 어떻게 극복했는가'</strong>입니다.<br><br>" +
+                           "<strong>1. 핵심 어필 포인트:</strong><br>" +
+                           "- <strong>환각(Hallucination) 방어</strong>: BM25 키워드 검색과 Dense 벡터 임베딩을 결합한 하이브리드 검색 파이프라인 및 Re-ranking 모델 적용 경험을 설명하세요.<br>" +
+                           "- <strong>비용 & 레이턴시 최적화</strong>: Redis Semantic Cache를 통한 반복 질의 응답 시간(Latency) 단축, 불필요한 토큰 비용 절감 사례를 수치와 함께 언급하세요.<br>" +
+                           "- <strong>데이터 청킹(Chunking) 전략</strong>: 문서 분할 시 문맥 손실을 막기 위해 Recursive Character Splitting이나 메타데이터 태깅을 고민했던 엔지니어링 과정을 어필하세요.<br><br>" +
+                           "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
+                           "• <em>'벡터 DB(Pinecone, pgvector 등)를 선택할 때 어떤 트레이드오프(비용, 확장성, 인프라 운영 난이도)를 고려하셨나요?'</em><br>" +
+                           "• <em>'RAG 컨텍스트가 너무 길어져 LLM 윈도우를 초과하거나 비용이 낭비될 때 어떻게 제어하셨나요?'</em>" +
+                           ragSnippetHtml,
+                    model: "TechPrep AI Mentor (RAG Client Mode)",
+                    references: referencesMeta
+                };
+            }
+
+            if (low.includes('모르겠') || low.includes('막막') || low.includes('방황') || low.includes('어떡') || (low.includes('무엇을') && low.includes('해야')) || (low.includes('어떤걸') && low.includes('해야'))) {
                 return {
                     reply: "☕ <strong>[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]</strong><br><br>" +
                            "아이고, 많이 답답하고 막막하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.<br><br>" +

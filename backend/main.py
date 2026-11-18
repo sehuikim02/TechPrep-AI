@@ -527,7 +527,21 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                 "오늘 하루도 맑고 상쾌한 기운 받으셔서, 막히는 코드나 복잡한 알고리즘도 시원하게 술술 풀리길 응원할게요! 또 궁금하거나 이야기 나누고 싶은 게 생기면 언제든 편하게 말 걸어주세요."
             )
             model_name = "TechPrep AI Mentor (Daily Coach)"
-        elif any(k in low for k in ["모르겠", "막막", "방황", "어떡", "어떻", "무엇을", "어떤걸", "불안"]):
+        elif any(k in low for k in ["llm", "rag", "생성형", "프롬프트", "에이전트", "agent"]):
+            reply_text = (
+                "🤖 **[시니어 면접관 코칭: LLM & RAG 실무 경험 어필 가이드]**\n\n"
+                "정말 트렌디하고 강력한 무기입니다! 면접관이 LLM/RAG 프로젝트를 볼 때 가장 관심 있게 보는 것은 '단순히 API를 호출해 봤는가'가 아니라, **'LLM의 한계(비용, 지연 시간, 환각)를 시스템 아키텍처로 어떻게 극복했는가'**입니다.\n\n"
+                "**1. 핵심 어필 포인트:**\n"
+                "- **환각(Hallucination) 방어**: BM25 키워드 검색과 Dense 벡터 임베딩을 결합한 하이브리드 검색 파이프라인 및 Re-ranking 모델 적용 경험을 설명하세요.\n"
+                "- **비용 & 레이턴시 최적화**: Redis Semantic Cache를 통한 반복 질의 응답 시간(Latency) 단축, 불필요한 토큰 비용 절감 사례를 수치와 함께 언급하세요.\n"
+                "- **데이터 청킹(Chunking) 전략**: 문서 분할 시 문맥 손실을 막기 위해 Recursive Character Splitting이나 메타데이터 태깅을 고민했던 엔지니어링 과정을 어필하세요.\n\n"
+                "**2. 단골 꼬리 질문(Follow-up):**\n"
+                "- *'벡터 DB(Pinecone, pgvector 등)를 선택할 때 어떤 트레이드오프(비용, 확장성, 인프라 운영 난이도)를 고려하셨나요?'*\n"
+                "- *'RAG 컨텍스트가 너무 길어져 LLM 윈도우를 초과하거나 비용이 낭비될 때 어떻게 제어하셨나요?'*"
+                + rag_note
+            )
+            model_name = "TechPrep AI Mentor (Built-in) + RAG" if rag_note else "TechPrep AI Mentor (Built-in)"
+        elif any(k in low for k in ["모르겠", "막막", "방황", "어떡"]) or ("무엇을" in low and "해야" in low) or ("어떤걸" in low and "해야" in low):
             reply_text = (
                 "☕ **[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]**\n\n"
                 "아이고, 많이 막막하고 답답하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.\n\n"
