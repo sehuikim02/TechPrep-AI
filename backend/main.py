@@ -23,7 +23,8 @@ app.add_middleware(
 
 # Gemini API Client 초기화
 GEMINI_CLIENT = None
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"]
 
 SYSTEM_INSTRUCTION = (
     "너는 IT 대기업의 10년 차 시니어 DevOps / 백엔드 엔지니어이자 다정하고 지혜로운 AI 커리어 & 기술 멘토야.\n"
@@ -467,13 +468,24 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                 temperature=0.7,
             )
 
-            response = GEMINI_CLIENT.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=full_prompt,
-                config=config
-            )
-            reply_text = response.text
-            model_name = f"Google Gemini ({GEMINI_MODEL}) + RAG"
+            response = None
+            used_model = None
+            for m in [GEMINI_MODEL] + [mod for mod in GEMINI_FALLBACK_MODELS if mod != GEMINI_MODEL]:
+                try:
+                    response = GEMINI_CLIENT.models.generate_content(
+                        model=m,
+                        contents=full_prompt,
+                        config=config
+                    )
+                    if response and response.text:
+                        used_model = m
+                        reply_text = response.text
+                        break
+                except Exception as model_err:
+                    print(f"Model {m} failed: {model_err}")
+
+            if reply_text:
+                model_name = f"Google Gemini ({used_model})" + (" + RAG" if rag_context_snippets else "")
         except Exception as e:
             print(f"Gemini API 호출 에러: {e}")
 
@@ -529,6 +541,20 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                 "지치지 말고 페이스 유지하세요! 구체적으로 어떤 기술이나 분야가 고민되는지 조금 더 편하게 털어놔 주시면 제가 함께 길을 찾아드릴게요. 💪"
             )
             model_name = "TechPrep AI Mentor (Career Coach)"
+        elif any(k in low for k in ["떨려", "긴장", "불안", "무서", "걱정", "심장"]):
+            reply_text = (
+                "🌿 **[시니어 면접관의 따뜻한 멘탈 케어: 면접 긴장 극복법]**\n\n"
+                "아이고, 면접이 코앞이라니 심장이 쿵쾅거리고 손에 땀이 나시죠! 그 마음, 정말 100% 이해합니다. 10년 차인 저도 중요한 기술 프레젠테이션이나 임원 미팅 전에는 여전히 긴장되거든요. 😊\n\n"
+                "면접관의 입장에서 꼭 전해드리고 싶은 **마음 안정 팁 3가지**를 드릴게요:\n\n"
+                "**1. 면접관은 '떨어뜨리려고' 앉아 있는 사람이 아닙니다**\n"
+                "- 면접관은 '이 사람과 같이 일하면 얼마나 즐겁고 든든할까?'를 기대하며 지원자의 장점을 찾으려고 애쓰고 있습니다. 시험관이 아니라 미래의 동료를 만나러 가는 티타임이라고 생각하세요.\n\n"
+                "**2. '모르겠습니다'는 감점 요인이 아닙니다**\n"
+                "- 모르는 질문을 받았을 때 억지로 꾸며내려 하면 긴장감이 배가 됩니다. '그 부분은 아직 깊이 다뤄보지 못했지만, 제가 아는 A 원리에 비추어 보면 이렇게 유추해 볼 수 있습니다'라고 솔직하고 논리적으로 풀어내면 면접관은 오히려 감탄합니다.\n\n"
+                "**3. 심호흡과 질문 곱씹기**\n"
+                "- 질문을 받자마자 1초 만에 대답할 필요가 전혀 없습니다. '좋은 질문 감사드립니다. 잠시 생각할 시간을 3초만 가져도 될까요?'라고 여유를 가지면 긴장감이 확 내려갑니다.\n\n"
+                "지금까지 치열하게 준비해 오신 것만으로도 이미 훌륭한 엔지니어입니다. 본인을 믿고 편안하게 이야기 나누고 오세요! 진심으로 합격을 응원합니다! 🍀"
+            )
+            model_name = "TechPrep AI Mentor (Mindset Coach)"
         elif any(k in low for k in ["신입", "어필", "취업", "비전공", "포트폴리오", "진로", "커리어"]):
             reply_text = (
                 "🌱 **[시니어 면접관이 전하는 신입 개발자 핵심 어필 포인트]**\n\n"
