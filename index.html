@@ -951,6 +951,41 @@
                                  `</div>`;
             }
 
+            if (low.includes('날씨') || low.includes('비오') || low.includes('기온') || low.includes('미세먼지')) {
+                return {
+                    reply: "☀️ <strong>[선배의 일상 톡톡: 날씨 & 리프레시]</strong><br><br>" +
+                           "오늘 날씨를 물어보셨네요! 바쁜 개발 공부와 취업 준비 중에도 가끔은 모니터에서 눈을 떼고 창밖을 보며 가벼운 스트레칭이나 산책을 해주는 게 정말 중요합니다. 😊<br><br>" +
+                           "오늘 하루도 맑고 상쾌한 기운 듬뿍 받으셔서, 막혔던 에러나 복잡한 알고리즘도 시원하게 풀리길 바랄게요! 기술 질문이든 고민이든 언제든 편하게 말 걸어주세요.",
+                    model: "TechPrep AI Mentor (Daily Coach)",
+                    references: null
+                };
+            }
+
+            if (low.includes('모르겠') || low.includes('막막') || low.includes('방황') || low.includes('어떡') || low.includes('무엇을') || low.includes('어떤걸') || low.includes('불안')) {
+                return {
+                    reply: "☕ <strong>[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]</strong><br><br>" +
+                           "아이고, 많이 답답하고 막막하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.<br><br>" +
+                           "이럴 때는 너무 거창한 목표를 세우기보다 <strong>작고 확실한 3단계</strong>로 호흡을 가다듬는 게 가장 효과적이에요:<br><br>" +
+                           "<strong>1. 관심 도메인 하나 딱 정하기</strong><br>" +
+                           "- 백엔드, 프론트엔드, DevOps/인프라, 데이터 등 모든 것을 다 잘할 수는 없습니다. 마음이 조금이라도 더 끌리는 메인 트랙 하나를 정해보세요.<br><br>" +
+                           "<strong>2. 작은 서비스 하나 끝까지 배포해 보기 (End-to-End)</strong><br>" +
+                           "- 강의만 계속 듣는 '인강 완강 러너'에서 벗어나, 로그인부터 DB 연동, 클라우드 무료 배포(Render/Vercel)까지 작은 기능을 내 손으로 끝장내 보는 경험이 자신감을 되찾아 줍니다.<br><br>" +
+                           "<strong>3. 실패 노트(에러 로그) 작성하기</strong><br>" +
+                           "- '오늘 겪은 에러와 내가 시도한 해결책 3줄'을 기록하는 습관만 들여도 면접관이 가장 좋아하는 훌륭한 포트폴리오가 됩니다.<br><br>" +
+                           "지치지 말고 페이스 유지하세요! 구체적으로 어떤 기술이나 분야가 고민되는지 조금 더 편하게 털어놔 주시면 제가 함께 길을 찾아드릴게요. 💪",
+                    model: "TechPrep AI Mentor (Career Coach)",
+                    references: null
+                };
+            }
+
+            if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello')) {
+                return {
+                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다.<br><br>개발 공부, 진로 고민, 일상 스몰토크부터 실전 기술 면접 팁까지 편하게 무엇이든 물어보세요! 따뜻하고 든든하게 도와드릴게요.",
+                    model: "TechPrep AI Mentor (Daily Coach)",
+                    references: null
+                };
+            }
+
             if (low.includes('신입') || low.includes('어필') || low.includes('취업') || low.includes('비전공') || low.includes('포트폴리오') || low.includes('진로')) {
                 return {
                     reply: "🌱 <strong>[시니어 면접관이 전하는 신입 개발자 핵심 어필 가이드]</strong><br><br>" +
