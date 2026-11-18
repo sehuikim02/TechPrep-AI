@@ -1,25 +1,22 @@
-name: Update TechPrep-AI Pipeline & GitHub Pages
+name: Update TechPrep-AI Pipeline
 
 on:
   schedule:
     # 매일 UTC 00:00, 12:00 (한국 시간 09:00, 21:00) 2회 자동 최신화
     - cron: '0 0,12 * * *'
-  workflow_dispatch: # GitHub 웹 콘솔에서 'Run workflow' 버튼으로 즉시 실행 가능
+  workflow_dispatch: # GitHub 웹 콘솔에서 'Run workflow' 버튼으로 즉시 수동 실행 가능
   push:
     branches:
       - main
+    paths:
+      - 'collector/**'
+      - '.github/workflows/update_feed.yml'
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  collect-and-deploy:
+  collect-and-update:
     runs-on: ubuntu-latest
 
     steps:
@@ -46,15 +43,3 @@ jobs:
           git config --local user.name "GitHub Action Bot"
           git add data/ jobs_and_trends.json news.json frontend/
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore(feed): auto update IT trend & interview insights [skip ci]" && git push)
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
