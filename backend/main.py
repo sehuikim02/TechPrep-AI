@@ -265,9 +265,16 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
     query_tokens = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]{2,}', query)]
     stopwords = {
         "어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변", "요령",
-        "신입", "개발자", "면접관", "어필", "가장", "좋을까", "좋을까요", "준비", "포트폴리오", "취업", "진로"
+        "신입", "개발자", "면접관", "어필", "가장", "좋을까", "좋을까요", "준비", "포트폴리오", "취업", "진로",
+        "서울", "날씨", "오늘", "내일", "기온", "어때", "어때요", "어떡", "어떻", "무엇", "어떤", "어떤걸",
+        "모르겠", "방황", "불안", "시작", "공부", "방법", "구조", "전략", "방식", "설계", "대규모"
     }
     keywords = [k for k in query_tokens if k not in stopwords]
+
+    # 키워드가 없거나, 질문 자체가 일상/날씨/단순 조언인 경우 RAG 기사 검색 스킵
+    daily_weather_patterns = ["날씨", "기온", "비오", "맑", "미세먼지", "안녕", "반가", "하이", "모르겠", "막막", "방황", "어떤걸"]
+    if any(p in query.lower() for p in daily_weather_patterns):
+        return []
 
     if not keywords:
         return []
@@ -281,17 +288,23 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
         text = f"{title} {summary} {insight} {tags}".lower()
 
         score = 0
+        matched_kws = 0
         for kw in keywords:
+            kw_score = 0
             if kw in title.lower():
-                score += 5  # 제목 매칭 가중치
+                kw_score += 6  # 제목 매칭 가중치
             if kw in tags.lower():
-                score += 4  # 태그 매칭 가중치
+                kw_score += 4  # 태그 매칭 가중치
             if kw in insight.lower():
-                score += 3  # 실무 인사이트 매칭
+                kw_score += 3  # 실무 인사이트 매칭
             if kw in summary.lower():
-                score += 1
+                kw_score += 1
+            if kw_score > 0:
+                matched_kws += 1
+                score += kw_score
 
-        if score > 0:
+        # 최소 임계값: 핵심 키워드가 제목이나 태그에 직접 부합하거나 고득점인 경우만 인정 (유사도 7점 이상)
+        if score >= 7 and matched_kws >= 1:
             scored_articles.append((score, item))
 
     scored_articles.sort(key=lambda x: x[0], reverse=True)
@@ -532,6 +545,20 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                 "응원합니다! 자신감을 갖고 본인의 치열했던 문제 해결 과정을 보여주세요. 💪"
             )
             model_name = "TechPrep AI Mentor (Career Coach)"
+        elif any(k in low for k in ["트래픽", "캐시", "캐싱", "분산", "대규모"]):
+            reply_text = (
+                "💡 **[시니어 면접관 코칭: 대규모 트래픽 분산 & 캐싱 전략]**\n\n"
+                "대규모 트래픽과 캐싱 질문은 백엔드/인프라 면접에서 **시스템 안정성과 성능 최적화 역량**을 검증하는 단골 핵심 질문입니다.\n\n"
+                "**1. 핵심 답변 포인트:**\n"
+                "- **트래픽 분산 (L4/L7 계층)**: ALB를 통한 라운드로빈/최소 연결 분산과 Auto Scaling Group(HPA) 동적 증설을 설명합니다.\n"
+                "- **캐싱 전략 (Cache Aside vs Write Through)**: 읽기 위주 트래픽에는 Redis를 활용한 Look-Aside 패턴을 적용하고, 데이터 정합성을 위한 TTL 및 캐시 무효화(Cache Invalidation) 전략을 명확히 제시합니다.\n"
+                "- **장애 방어 (Cache Avalanche / Penetration)**: 캐시 만료 시각 지터링(Jitter) 분산, Bloom Filter 도입, 서킷 브레이커(Resilience4j)를 통한 DB 부하 격리를 강조하세요.\n\n"
+                "**2. 면접관의 단골 꼬리 질문(Follow-up):**\n"
+                "- *'Redis Cluster 다운 시 데이터 유실 방지와 대체 Failover 프로세스는 어떻게 설계하셨나요?'*\n"
+                "- *'Hot Key(특정 데이터에 트래픽 집중) 문제로 단일 Redis 샤드에 병목이 생겼을 때의 해결책은?'*"
+                + rag_note
+            )
+            model_name = "TechPrep AI Mentor (Built-in) + RAG" if rag_note else "TechPrep AI Mentor (Built-in)"
         elif any(k in low for k in ["안녕", "반가", "하이", "hello"]):
             reply_text = "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다. 어떤 기술 주제나 면접 고민이든 편하게 물어보세요!"
             model_name = "TechPrep AI Mentor (Built-in)"
