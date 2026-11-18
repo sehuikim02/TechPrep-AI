@@ -95,28 +95,28 @@
 TechPrep-AI/
 ├── .github/
 │   └── workflows/
-│       └── update_feed.yml       # [자동화 로봇] 하루 2번 뉴스 수집 및 사이트 자동 갱신
+│       └── update_feed.yml       # [자동화] 매일 2회 RSS 수집 실행 & GitHub Pages 자동 배포
 ├── backend/
-│   ├── main.py                  # [백엔드 서버] 실시간 AI 면접관 (FastAPI + Gemini 모델 체인 + 대화방 관리)
-│   └── run_server.py            # [실행 스크립트] 내 컴퓨터에서 백엔드 서버 켜기 (포트 8080)
+│   ├── main.py                  # [백엔드] FastAPI 서버: 지능형 RAG 검색, 세션별 채팅방 관리, Gemini 다중 모델 체인
+│   └── run_server.py            # [실행] Uvicorn 기반 로컬 개발용 서버 실행 스크립트
 ├── collector/
-│   ├── config.py                # [수집 설정] 어디서 기사를 가져올지(언론사 목록) & 분류할 키워드 정의
-│   ├── fetcher.py               # [뉴스 배달부] 인터넷 언론사 및 기술 블로그에서 기사 원문 긁어오기
-│   ├── processor.py             # [AI 정미소] 비IT 기사 걸러내고, 카테고리 분류 및 면접 핵심 포인트 작성
-│   ├── sample_data.py           # [비상용 데이터] 인터넷이 끊겼을 때 대신 보여줄 엄선된 기출 데이터
-│   └── main.py                  # [수집 지휘소] 수집 ➔ 정제 ➔ 면접 포인트 추출 ➔ 파일 저장을 한 번에 실행
+│   ├── config.py                # [설정] 9대 RSS 피드 목록 및 5대 도메인 키워드/제외어 정의
+│   ├── fetcher.py               # [수집기] RSS/XML 파싱 및 실시간 뉴스 항목 추출
+│   ├── processor.py             # [인사이트 엔진] 비IT 노이즈 필터링, 5대 카테고리 분류, 기사별 고유 실무 인사이트 도출
+│   ├── sample_data.py           # [시드 데이터] 오프라인/네트워크 오류 시 사용할 고품질 면접 기출 데이터
+│   └── main.py                  # [수집 실행] 수집-가공-인사이트 강화-JSON 저장을 총괄하는 파이프라인 진입점
 ├── data/
-│   ├── jobs_and_trends.json     # [데이터 보관소] 정제 완료된 전체 기사 및 통계 데이터 원본
-│   └── news.json                # [웹 연동용 데이터] 프론트엔드 대시보드에서 읽어갈 데이터 파일
+│   ├── jobs_and_trends.json     # [데이터] 가공 완료된 전체 기사 및 메타데이터 아카이브
+│   └── news.json                # [데이터] 프론트엔드 연동용 JSON
 ├── frontend/
-│   ├── index.html               # [대시보드 화면 원본] 6개씩 카드뉴스 보기 + AI 멘토 대화창 UI
-│   ├── jobs_and_trends.json     # [프론트엔드용 데이터 복사본]
-│   └── news.json                # [프론트엔드용 데이터 복사본]
-├── index.html                   # [웹 배포 파일] GitHub Pages가 방문자에게 보여주는 실제 대시보드 화면
-├── jobs_and_trends.json         # [웹 배포 데이터] GitHub Pages 웹사이트가 읽는 실시간 데이터
-├── news.json                    # [웹 배포 데이터] GitHub Pages 웹사이트가 읽는 실시간 데이터
-├── requirements.txt             # [설치 목록] 프로그램 실행에 필요한 파이썬 패키지 모음
-└── .gitignore                   # [보안 파일] 비밀 API 키(.env)가 GitHub에 실수로 올라가지 않도록 보호
+│   ├── index.html               # [웹 UI 원본] Tailwind CSS 기반 반응형 대시보드
+│   ├── jobs_and_trends.json     # [프론트엔드용 복사본]
+│   └── news.json                # [프론트엔드용 복사본]
+├── index.html                   # [배포용] GitHub Pages 루트 호스팅용 웹 파일
+├── jobs_and_trends.json         # [배포용] GitHub Pages 루트 데이터셋
+├── news.json                    # [배포용] GitHub Pages 루트 데이터셋
+├── requirements.txt             # [의존성] Render 배포 및 로컬 실행에 필요한 필수 패키지 목록
+└── .gitignore                   # [보안] .env 등 개인 API 키 및 캐시 파일의 Git 업로드 방지
 ```
 
 ---
