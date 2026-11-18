@@ -212,6 +212,16 @@
             <div id="cards-grid" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Dynamically populated cards -->
             </div>
+
+            <!-- Pagination Navigation Section -->
+            <div id="pagination-container" class="hidden mt-10 pt-6 border-t border-slate-200/90 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+                <div class="text-slate-500 font-medium flex items-center gap-1.5" id="pagination-info">
+                    <!-- e.g. 전체 374개 중 1-5개 표시 (페이지 1/75) -->
+                </div>
+                <div class="flex items-center gap-1.5" id="pagination-buttons">
+                    <!-- Dynamic page numbers and prev/next buttons -->
+                </div>
+            </div>
         </section>
 
     </main>
@@ -378,6 +388,8 @@
     <script>
         let allArticles = [];
         let searchQuery = '';
+        let currentPage = 1;
+        const PAGE_SIZE = 5;
 
         // 5 Domain Bright Badge & Accent Box Styles
         const STYLES = {
@@ -466,6 +478,7 @@
 
         // 키워드 클릭 시 검색창에 자동 입력 후 필터링
         function filterByKeyword(keyword) {
+            currentPage = 1;
             const input = document.getElementById('search-input');
             input.value = keyword;
             handleSearch();
@@ -510,6 +523,7 @@
         }
 
         function handleSearch() {
+            currentPage = 1;
             const input = document.getElementById('search-input');
             const clearBtn = document.getElementById('clear-search-btn');
             searchQuery = input.value.toLowerCase().trim();
@@ -529,6 +543,7 @@
             const loading = document.getElementById('loading-state');
             const grid = document.getElementById('cards-grid');
             const empty = document.getElementById('empty-state');
+            const paginationContainer = document.getElementById('pagination-container');
 
             loading.classList.add('hidden');
 
@@ -541,6 +556,7 @@
 
             if (filtered.length === 0) {
                 grid.classList.add('hidden');
+                if (paginationContainer) paginationContainer.classList.add('hidden');
                 empty.classList.remove('hidden');
                 return;
             }
@@ -548,7 +564,18 @@
             empty.classList.add('hidden');
             grid.classList.remove('hidden');
 
-            grid.innerHTML = filtered.map(item => {
+            // --- Pagination Logic (한 페이지당 5개) ---
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * PAGE_SIZE;
+            const endIndex = Math.min(startIndex + PAGE_SIZE, totalItems);
+            const pageItems = filtered.slice(startIndex, endIndex);
+
+            grid.innerHTML = pageItems.map(item => {
                 const style = STYLES[item.category] || STYLES['IT 트렌드'];
                 
                 const keywords = (item.keywords || []).map(kw => `
@@ -612,6 +639,110 @@
                     </article>
                 `;
             }).join('');
+
+            // 페이지네이션 바 렌더링
+            renderPagination(totalItems, totalPages, startIndex, endIndex);
+        }
+
+        function renderPagination(totalItems, totalPages, startIndex, endIndex) {
+            const paginationContainer = document.getElementById('pagination-container');
+            const paginationInfo = document.getElementById('pagination-info');
+            const paginationButtons = document.getElementById('pagination-buttons');
+
+            if (!paginationContainer || !paginationInfo || !paginationButtons) return;
+
+            if (totalPages <= 1) {
+                paginationContainer.classList.add('hidden');
+                return;
+            }
+
+            paginationContainer.classList.remove('hidden');
+            paginationInfo.innerHTML = `
+                <span>총 <strong class="text-slate-800 font-bold">${totalItems.toLocaleString()}</strong>개 중 <strong>${startIndex + 1}-${endIndex}</strong>개 표시</span>
+                <span class="text-slate-300">•</span>
+                <span class="text-slate-500">페이지 <strong>${currentPage}</strong> / ${totalPages}</span>
+            `;
+
+            let buttonsHtml = '';
+
+            // 이전 페이지 버튼
+            const hasPrev = currentPage > 1;
+            buttonsHtml += `
+                <button 
+                    onclick="goToPage(${currentPage - 1})"
+                    ${!hasPrev ? 'disabled' : ''}
+                    class="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium transition disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1"
+                    title="이전 페이지"
+                >
+                    <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    <span class="hidden sm:inline">이전</span>
+                </button>
+            `;
+
+            // 페이지 번호 창 (최대 5개 노출 및 앞뒤 말줄임표 처리)
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            if (startPage > 1) {
+                buttonsHtml += `
+                    <button onclick="goToPage(1)" class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold transition">1</button>
+                `;
+                if (startPage > 2) {
+                    buttonsHtml += `<span class="px-1 text-slate-400">...</span>`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const isActive = (p === currentPage);
+                buttonsHtml += `
+                    <button 
+                        onclick="goToPage(${p})"
+                        class="w-8 h-8 rounded-xl font-bold transition ${isActive 
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
+                            : 'border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-700'}"
+                    >
+                        ${p}
+                    </button>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    buttonsHtml += `<span class="px-1 text-slate-400">...</span>`;
+                }
+                buttonsHtml += `
+                    <button onclick="goToPage(${totalPages})" class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold transition">${totalPages}</button>
+                `;
+            }
+
+            // 다음 페이지 버튼
+            const hasNext = currentPage < totalPages;
+            buttonsHtml += `
+                <button 
+                    onclick="goToPage(${currentPage + 1})"
+                    ${!hasNext ? 'disabled' : ''}
+                    class="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium transition disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1"
+                    title="다음 페이지"
+                >
+                    <span class="hidden sm:inline">다음</span>
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+            `;
+
+            paginationButtons.innerHTML = buttonsHtml;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderCards();
+            const grid = document.getElementById('cards-grid');
+            if (grid) {
+                window.scrollTo({ top: grid.offsetTop - 120, behavior: 'smooth' });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', loadPrepData);
