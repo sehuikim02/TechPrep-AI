@@ -40,7 +40,7 @@
 flowchart TD
     subgraph S1["1. 데이터 수집 & 정제 파이프라인 (Collector)"]
         RSS["국내/해외 IT RSS 피드<br>(전자신문, AWS, K8s, The Hacker News 등)"] --> Fetcher["fetcher.py<br>(비동기 피드 수집)"]
-        Fetcher --> Processor["processor.py (AI 인사이트 엔진)<br>1) 비IT 노이즈 100% 제거<br>2) 5대 도메인 자동 분류<br>3) 실무 면접 핵심 인사이트 도출"]
+        Fetcher --> Processor["processor.py - AI 인사이트 엔진<br>1) 비IT 노이즈 100% 제거<br>2) 5대 도메인 자동 분류<br>3) 실무 면접 핵심 인사이트 도출"]
         Processor --> JSON["data/jobs_and_trends.json<br>& news.json 생성/갱신"]
     end
 
@@ -50,14 +50,14 @@ flowchart TD
     end
 
     subgraph S3["3. 프론트엔드 관제탑 (Frontend / Static Web)"]
-        GHP --> UI["index.html (Tailwind CSS UI)<br>- 5대 도메인 메트릭 카드 & 추천 태그<br>- 풀와이드 실시간 키워드 검색바<br>- ChatGPT 스타일 멀티 대화방 사이드바"]
+        GHP --> UI["index.html - Tailwind CSS UI<br>- 5대 도메인 메트릭 카드 & 추천 태그<br>- 풀와이드 실시간 키워드 검색바<br>- ChatGPT 스타일 멀티 대화방 사이드바"]
     end
 
     subgraph S4["4. 백엔드 및 RAG 기반 AI 면접관 (Backend API)"]
-        UI -->|익명 세션 헤더 + 질문| Fast["FastAPI 서버 (backend/main.py)<br>(Render 또는 로컬 8080)"]
-        Fast -->|RAG 검색 (Retrieval)| RAG["내부 최신 기사 & 인사이트 DB"]
-        RAG -->|관련 아티클 컨텍스트 주입| Gemini["Google Gemini 2.5 Flash<br>(시니어 DevOps 면접관 페르소나)"]
-        Gemini -->|실시간 맞춤 답변 + 출처 링크 + 꼬리 질문| UI
+        UI -->|"익명 세션 헤더 + 질문"| Fast["FastAPI 서버 (backend/main.py)<br>(Render 또는 로컬 8080)"]
+        Fast -->|"RAG 검색 (Retrieval)"| RAG["내부 최신 기사 & 인사이트 DB"]
+        RAG -->|"관련 아티클 컨텍스트 주입"| Gemini["Google Gemini 2.5 Flash<br>(시니어 DevOps 면접관 페르소나)"]
+        Gemini -->|"실시간 맞춤 답변 + 출처 링크 + 꼬리 질문"| UI
     end
 ```
 
