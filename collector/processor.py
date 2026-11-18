@@ -1,4 +1,8 @@
 import re
+import os
+import json
+import logging
+import urllib.request
 from typing import List, Dict, Optional
 from collector.config import CATEGORY_KEYWORDS, EXCLUDE_KEYWORDS
 
@@ -107,7 +111,7 @@ class InterviewInsightEngine:
 
     def generate_key_insight(self, category: str, title: str, content: str) -> Dict:
         """
-        기술 트렌드 기사에서 실무 핵심 인사이트 및 주요 엔지니어링 포인트를 도출
+        기술 트렌드 기사에서 실무 핵심 인사이트 및 주요 엔지니어링 포인트를 도출 (규칙 기반 폴백)
         """
         text = f"{title} {content}".lower()
 
@@ -115,17 +119,22 @@ class InterviewInsightEngine:
         if category == "IT 트렌드":
             if "신분증" in text or "인증" in text or "did" in text:
                 return {
-                    "insight": "중앙 집중형 DB 유출 위험을 줄이고 사용자 자기주권 신원(SSI)을 보장하는 블록체인/DID 기반 아키텍처가 공공·금융 전반으로 일상화되고 있습니다. 개인키 분실 시 소셜 복구 및 영지식 증명(ZKP)을 통한 프라이버시 보호가 기술적 핵심 과제입니다.",
-                    "target_role": "플랫폼 / 서비스 엔지니어"
+                    "insight": f"'{title[:20]}...' 이슈처럼 분산 신원(DID)/인증 아키텍처 도입 시, 중앙 DB 탈취 위험을 원천 차단하기 위한 개인키 소셜 복구와 영지식 증명(ZKP) 설계가 핵심입니다.",
+                    "target_role": "플랫폼 / 보안 엔지니어"
                 }
             elif "기본법" in text or "규제" in text or "윤리" in text:
                 return {
-                    "insight": "AI 기본법 입법과 함께 대고객 서비스의 투명성, 개인정보 비식별화(마스킹) 파이프라인, 그리고 딥페이크 및 편향 출력을 방지하는 가드레일(Guardrails) 컴플라이언스 체계 구축이 엔터프라이즈의 필수 요건으로 떠올랐습니다.",
-                    "target_role": "IT 기획 / AI 서비스 개발자"
+                    "insight": f"'{title[:20]}...'와 같은 AI 거버넌스 강화 국면에서는 대고객 서비스의 출력 편향 및 환각을 방지하는 가드레일(Guardrails)과 개인정보 마스킹 파이프라인 검증이 필수입니다.",
+                    "target_role": "AI 서비스 개발자 / 컴플라이언스 엔지니어"
+                }
+            elif "스타트업" in text or "창업" in text or "글로벌" in text:
+                return {
+                    "insight": f"'{title[:20]}...' 글로벌 확장 국면에서는 멀티 리전 레이턴시 최소화를 위한 글로벌 CDN 및 서버리스 Edge 아키텍처 설계가 비즈니스 성패를 결정합니다.",
+                    "target_role": "풀스택 / 글로벌 플랫폼 엔지니어"
                 }
             else:
                 return {
-                    "insight": "원격 근무의 정착으로 단순 사설망(VPN)을 넘어선 제로트러스트 네트워크 액세스(ZTNA)와 가상 데스크톱(VDI), 세분화된 SSO/MFA 통합 정책을 통해 보안성과 생산성을 동시에 확보하는 추세입니다.",
+                    "insight": f"'{title[:20]}...'와 관련된 디지털 전환(DX) 프로젝트에서는 레거시 시스템과의 연동 안정성과 점진적 마이그레이션(Strangler Fig 패턴) 전략이 중요합니다.",
                     "target_role": "시스템 엔지니어 / IT 기획"
                 }
 
@@ -133,12 +142,17 @@ class InterviewInsightEngine:
         elif category == "클라우드 아키텍처":
             if "serverless" in text or "lambda" in text or "서버리스" in text:
                 return {
-                    "insight": "가변적인 트래픽 대응 시 비용 효율성이 뛰어나지만, 콜드 스타트 지연과 상태 비저장(Stateless) 특성을 감안해 프로비저닝된 동시성 설정, RDS Proxy를 통한 DB 커넥션 풀링 최적화가 필수적입니다.",
+                    "insight": f"'{title[:20]}...' 환경에서는 트래픽 급증 시의 콜드 스타트를 완화하기 위한 프로비저닝된 동시성 설정과 RDS Proxy 커넥션 풀링 최적화가 필수적입니다.",
                     "target_role": "클라우드 / 백엔드 엔지니어"
+                }
+            elif "비용" in text or "finops" in text or "최적화" in text:
+                return {
+                    "insight": f"'{title[:20]}...'와 같은 인프라 운영에서는 리소스 태깅 자동화와 Spot/Graviton 인스턴스 전환을 통한 FinOps 비용 절감 및 유휴 자원 회수가 핵심 경쟁력입니다.",
+                    "target_role": "Cloud Architect / DevOps"
                 }
             else:
                 return {
-                    "insight": "단일 벤더 종속(Lock-in) 방지와 고가용성(DR)을 위해 멀티클라우드 도입이 늘고 있으나, Egress 네트워크 비용과 보안 정책 일원화의 복잡성이 커집니다. 테라폼 모듈화와 FinOps 태깅 정책이 실무 성공의 핵심입니다.",
+                    "insight": f"'{title[:20]}...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
                     "target_role": "Cloud Architect / DevOps"
                 }
 
@@ -146,40 +160,119 @@ class InterviewInsightEngine:
         elif category == "인프라/DevOps":
             if "kubernetes" in text or "k8s" in text or "쿠버네티스" in text:
                 return {
-                    "insight": "쿠버네티스 1.32의 인플레이스(In-place) 파드 리소스 변경 및 향상된 메모리 매니저를 통해 무중단 수직 스케일링이 한층 유연해졌습니다. 노드 장애 시 파드 퇴출(Eviction)과 PDB 정책 설정이 서비스 가용성을 좌우합니다.",
+                    "insight": f"'{title[:20]}...' 환경에서는 Pod의 Liveness/Readiness Probe 정밀 튜닝과 HPA/KEDA 기반 오토스케일링을 통해 장애 격리 및 무중단 배포를 달성해야 합니다.",
                     "target_role": "DevOps / SRE 엔지니어"
+                }
+            elif "ci/cd" in text or "배포" in text or "파이프라인" in text:
+                return {
+                    "insight": f"'{title[:20]}...' 파이프라인에서는 카나리(Canary) 배포와 ArgoCD 기반 GitOps를 통해 장애 발생 시 1분 내 자동 롤백되는 가드레일을 확보하는 것이 핵심입니다.",
+                    "target_role": "DevOps / 빌드 엔지니어"
                 }
             else:
                 return {
-                    "insight": "대규모 트래픽 환경에서는 단순 인프라 증설보다 Prometheus/Grafana 지표 수집, 분산 트레이싱, Kafka 메시지 큐 완충을 통해 병목 구간(Bottleneck)을 격리하고 부하를 분산시키는 설계가 결정적입니다.",
+                    "insight": f"'{title[:20]}...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
                     "target_role": "인프라 / SRE 엔지니어"
                 }
 
         # 4. 보안/침해사고 (Security, CVE, Ransomware, Hack)
         elif category == "보안/침해사고":
-            if "openssh" in text or "cve" in text or "취약점" in text:
+            if "cve" in text or "취약점" in text or "해킹" in text:
                 return {
-                    "insight": "원격 코드 실행(RCE) 취약점 발생 시 영향도 패키지 전수 조사와 즉각적인 인바운드 보안그룹/방화벽 포트 격리(VPN 경유 필수화)가 최우선 조치입니다. 무중단 롤링 패치와 침입 탐지 로그 감시가 병행되어야 합니다.",
+                    "insight": f"'{title[:20]}...' 취약점 대응에서는 SBOM(소프트웨어 자재명세서) 기반 취약점 전수 스캔과 mTLS 기반 제로트러스트 심층 방어가 최우선 방어선입니다.",
                     "target_role": "보안 엔지니어 / 인프라 담당자"
+                }
+            elif "개인정보" in text or "유출" in text or "인증" in text:
+                return {
+                    "insight": f"'{title[:20]}...' 관련 보안 사고 방지를 위해 DB 컬럼 단위의 암호화, 최소 권한 원칙 IAM, 불변 WORM 스토리지 백업 정책을 결합한 격리가 필수적입니다.",
+                    "target_role": "보안 / 클라우드 엔지니어"
                 }
             else:
                 return {
-                    "insight": "랜섬웨어가 백업 스토리지까지 암호화하는 이중 갈취 공격이 보편화됨에 따라, WORM(Write Once Read Many) 불변 정책, 오프사이트 백업, 그리고 최소 권한 기반의 제로트러스트 IAM 격리가 필수 방어선입니다.",
-                    "target_role": "보안 / 클라우드 엔지니어"
+                    "insight": f"'{title[:20]}...' 보안 전략에서는 침입 탐지(IDS/IPS) 로그의 실시간 SIEM 상관분석과 사고 발생 시 침해 호스트의 네트워크 자동 격리(SOAR)가 핵심입니다.",
+                    "target_role": "보안 관제 / 엔지니어"
                 }
 
         # 5. AI/머신러닝 (AI, LLM, Agent, MLOps)
         else:
             if "에이전트" in text or "agent" in text:
                 return {
-                    "insight": "자율형 AI 에이전트는 기획(Planning)-도구 사용(Tool-use)-피드백 루프를 스스로 실행하므로, 예측 불가능한 무한 루프를 막기 위한 최대 홉 수 제한, 샌드박스 실행 격리, 사람 승인(Human-in-the-loop) 가드레일이 핵심입니다.",
+                    "insight": f"'{title[:20]}...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
                     "target_role": "AI 엔지니어 / 백엔드 개발자"
+                }
+            elif "서빙" in text or "추론" in text or "반도체" in text or "gpu" in text:
+                return {
+                    "insight": f"'{title[:20]}...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+                    "target_role": "MLOps / AI 서빙 엔지니어"
                 }
             else:
                 return {
-                    "insight": "대규모 모델 서빙 환경에서는 하이브리드 검색(키워드+벡터) RAG 파이프라인과 vLLM PagedAttention 메모리 최적화, INT8/FP4 양자화를 통해 GPU 비용을 줄이고 서빙 처리량(Throughput)을 극대화해야 합니다.",
-                    "target_role": "AI/ML 개발자 / MLOps"
+                    "insight": f"'{title[:20]}...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+                    "target_role": "AI/ML 개발자 / 데이터 엔지니어"
                 }
+
+    def enrich_insights_with_llm(self, articles: List[Dict]) -> None:
+        """
+        Gemini API를 활용하여 수집된 각 기사마다 완전히 고유한 실무 기술 면접 인사이트를 일괄 도출
+        """
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+            if os.path.exists(env_file):
+                try:
+                    with open(env_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip().startswith("GEMINI_API_KEY="):
+                                api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                break
+                except Exception:
+                    pass
+
+        if not api_key:
+            logging.info("Gemini API key not found. Using advanced template insight engine.")
+            return
+
+        # 전체 기사 중 최신 30개 기사에 대해 집중적으로 고유 LLM 인사이트 생성
+        target_articles = articles[:30]
+        batch_size = 5
+        import time
+
+        for i in range(0, len(target_articles), batch_size):
+            batch = target_articles[i:i + batch_size]
+            prompt = (
+                "너는 IT 대기업 10년 차 수석 아키텍트이자 시니어 기술 면접관이야.\n"
+                "아래 기사 목록 각각에 대해, 해당 기사의 구체적인 기술 내용과 맥락을 바탕으로 주니어/시니어 개발자가 기술 면접이나 실무에서 어필할 수 있는 '고유한 실무 핵심 인사이트(interview_insight)' 1~2문장과 '추천 대상 직무(target_role)'를 도출해 줘.\n\n"
+                "규칙:\n"
+                "1. 모든 기사의 인사이트가 완전히 달라야 하며, 해당 기사의 구체적인 기술명/사례를 언급할 것.\n"
+                "2. 뻔한 일반론이 아니라 실무 엔지니어링 관점(아키텍처, 트레이드오프, 성능 최적화, 장애 대응, 보안 격리 등)에서 작성할 것.\n"
+                "3. 반드시 아래와 같은 순수 JSON 배열 형식으로만 응답할 것:\n"
+                "[{\"index\": 0, \"insight\": \"...\", \"target_role\": \"...\"}, ...]\n\n"
+                "기사 목록:\n"
+            )
+            for idx, a in enumerate(batch):
+                prompt += f"{idx}. 제목: {a.get('title')}\n   카테고리: {a.get('category')}\n   내용: {a.get('summary')}\n\n"
+
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+                data = json.dumps({
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"response_mime_type": "application/json"}
+                }).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                resp = urllib.request.urlopen(req, timeout=30)
+                res_json = json.loads(resp.read().decode("utf-8"))
+                text_out = res_json["candidates"][0]["content"]["parts"][0]["text"]
+                results = json.loads(text_out)
+                for r in results:
+                    idx = r.get("index")
+                    if idx is not None and 0 <= idx < len(batch):
+                        if r.get("insight"):
+                            batch[idx]["interview_insight"] = r["insight"].strip()
+                        if r.get("target_role"):
+                            batch[idx]["target_role"] = r["target_role"].strip()
+                logging.info(f"✅ Generated {len(results)} unique LLM insights for batch {i // batch_size + 1}")
+                time.sleep(1) # API Rate Limit 방어
+            except Exception as e:
+                logging.warning(f"⚠️ Failed to generate LLM insights for batch {i}: {e}")
 
     def process(self, raw_item: dict) -> Optional[dict]:
         title = raw_item.get("title", "").strip()

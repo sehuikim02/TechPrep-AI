@@ -80,7 +80,11 @@ def run_pipeline(output_paths: List[str] = None):
         except Exception as e:
             logging.warning(f"Failed to read existing archive for append: {e}")
 
-    # 6. 최종 메타데이터 및 출력 생성
+    # 6. LLM(Gemini) 기반 기사별 고유한 실무 핵심 인사이트 생성 (배치 처리)
+    logging.info(f"✨ Enhancing {len(processed_articles)} articles with unique LLM insights...")
+    insight_engine.enrich_insights_with_llm(processed_articles)
+
+    # 7. 최종 메타데이터 및 출력 생성
     payload = {
         "metadata": {
             "title": "TechPrep-AI: 개발자 취업 및 면접 대비 실시간 IT 트렌드 브리핑",
@@ -91,7 +95,7 @@ def run_pipeline(output_paths: List[str] = None):
         "articles": processed_articles
     }
 
-    # 7. 대상 파일들에 JSON 동기화 저장
+    # 8. 대상 파일들에 JSON 동기화 저장
     for path in output_paths:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
