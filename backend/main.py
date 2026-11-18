@@ -1,9 +1,12 @@
 import asyncio
 from datetime import datetime
+import json
 import os
 import random
+import re
+import uuid
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -25,9 +28,10 @@ GEMINI_MODEL = "gemini-2.5-flash"
 SYSTEM_INSTRUCTION = (
     "너는 IT 대기업의 10년 차 시니어 DevOps / 백엔드 엔지니어이자 따뜻하고 든든한 AI 멘토야. "
     "1. 일상적인 인사나 스몰토크('안녕하세요', '반가워요', '안녕' 등)가 들어오면 따뜻하고 유쾌하게 맞이하며, 어떤 고민이나 질문이든 편하게 이야기할 수 있도록 친절하게 대답해 줘.\n"
-    "2. 기술 질문이나 면접 고민이 들어오면 주니어 개발자의 눈높이에 맞춰 CS 기초와 실무 인프라 원리(Docker/K8s, 트래픽 분산, 클라우드 아키텍처, 보안 등)를 명쾌하게 설명해 줘.\n"
-    "3. 기술 면접 질문일 경우 핵심 답변 포인트와 함께 실제 면접관이 던질 수 있는 꼬리 질문(Follow-up questions) 1~2개를 덧붙여 주면 좋아.\n"
-    "4. 한국어로 자연스럽고 정중한 경어체로 대화해 줘."
+    "2. 질문과 관련된 최신 IT 뉴스나 실무 인사이트(RAG Context)가 주어지면, 이를 적극 인용하여 업계 최신 트렌드와 기술적 팩트를 바탕으로 답변해 줘.\n"
+    "3. 기술 질문이나 면접 고민이 들어오면 주니어 개발자의 눈높이에 맞춰 CS 기초와 실무 인프라 원리(Docker/K8s, 트래픽 분산, 클라우드 아키텍처, 보안 등)를 명쾌하게 설명해 줘.\n"
+    "4. 기술 면접 질문일 경우 핵심 답변 포인트와 함께 실제 면접관이 던질 수 있는 꼬리 질문(Follow-up questions) 1~2개를 덧붙여 주면 좋아.\n"
+    "5. 한국어로 자연스럽고 정중한 경어체로 대화해 줘."
 )
 
 # .env 파일이 있으면 환경 변수 로드
@@ -223,39 +227,217 @@ async def inject_fault(req: ChaosRequest):
         
     return {"message": f"Fault '{req.fault_type}' successfully injected", "current_status": server_state.status}
 
-# --- Gemini AI Tech Mentor Chat Endpoint ---
+# --- RAG (Retrieval-Augmented Generation) Helper ---
+def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
+    """
+    내부 저장된 jobs_and_trends.json 또는 news.json에서 쿼리와 가장 연관성 높은 아티클을 검색
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    target_files = [
+        os.path.join(base_dir, "jobs_and_trends.json"),
+        os.path.join(base_dir, "data", "jobs_and_trends.json"),
+        os.path.join(base_dir, "frontend", "jobs_and_trends.json"),
+        os.path.join(base_dir, "news.json")
+    ]
+    articles = []
+    for fp in target_files:
+        if os.path.exists(fp):
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    articles = data.get("articles", [])
+                    if articles:
+                        break
+            except Exception:
+                continue
+
+    if not articles:
+        return []
+
+    # 쿼리에서 유의미한 키워드 추출 (2글자 이상)
+    query_tokens = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]{2,}', query)]
+    stopwords = {"어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변", "요령"}
+    keywords = [k for k in query_tokens if k not in stopwords]
+
+    if not keywords:
+        return []
+
+    scored_articles = []
+    for item in articles:
+        title = item.get("title", "")
+        summary = item.get("summary", "") or item.get("raw_snippet", "")
+        insight = item.get("interview_insight", "")
+        tags = " ".join(item.get("keywords", []))
+        text = f"{title} {summary} {insight} {tags}".lower()
+
+        score = 0
+        for kw in keywords:
+            if kw in title.lower():
+                score += 5  # 제목 매칭 가중치
+            if kw in tags.lower():
+                score += 4  # 태그 매칭 가중치
+            if kw in insight.lower():
+                score += 3  # 실무 인사이트 매칭
+            if kw in summary.lower():
+                score += 1
+
+        if score > 0:
+            scored_articles.append((score, item))
+
+    scored_articles.sort(key=lambda x: x[0], reverse=True)
+    return [item for _, item in scored_articles[:top_k]]
+
+# --- Anonymous Session & Chat History Store ---
+# In-memory session store (session_id -> dict of rooms)
+# session_store[session_id] = { room_id: { "title": str, "updated_at": str, "messages": list } }
+session_store: Dict[str, Dict[str, Dict]] = {}
+
 class ChatMessage(BaseModel):
+    id: Optional[str] = None
     role: str  # user or model
     content: str
+    model: Optional[str] = None
+    created_at: Optional[str] = None
+    referenced_articles: Optional[List[Dict]] = None
 
 class ChatRequest(BaseModel):
     message: str
-    history: Optional[List[ChatMessage]] = None
-    context_topic: Optional[str] = None  # e.g. "Kubernetes Pod Eviction"
+    room_id: Optional[str] = None
+    context_topic: Optional[str] = None
 
 class ChatResponse(BaseModel):
+    room_id: str
     reply: str
     model: str
     created_at: str
+    referenced_articles: Optional[List[Dict]] = None
+
+class CreateRoomRequest(BaseModel):
+    title: Optional[str] = "새 대화"
+
+class RenameRoomRequest(BaseModel):
+    title: str
+
+@app.get("/api/chats")
+async def list_chat_rooms(x_session_id: Optional[str] = Header(None)):
+    sid = x_session_id or "default-session"
+    rooms = session_store.get(sid, {})
+    result = []
+    for rid, rdata in rooms.items():
+        result.append({
+            "room_id": rid,
+            "title": rdata.get("title", "대화방"),
+            "updated_at": rdata.get("updated_at", ""),
+            "message_count": len(rdata.get("messages", []))
+        })
+    result.sort(key=lambda x: x["updated_at"], reverse=True)
+    return result
+
+@app.post("/api/chats")
+async def create_chat_room(req: CreateRoomRequest, x_session_id: Optional[str] = Header(None)):
+    sid = x_session_id or "default-session"
+    if sid not in session_store:
+        session_store[sid] = {}
+    
+    room_id = f"room-{uuid.uuid4().hex[:8]}"
+    now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    session_store[sid][room_id] = {
+        "title": req.title or "새 대화",
+        "updated_at": now_iso,
+        "messages": []
+    }
+    return {"room_id": room_id, "title": req.title, "created_at": now_iso}
+
+@app.get("/api/chats/{room_id}/messages")
+async def get_room_messages(room_id: str, x_session_id: Optional[str] = Header(None)):
+    sid = x_session_id or "default-session"
+    rooms = session_store.get(sid, {})
+    if room_id not in rooms:
+        return []
+    return rooms[room_id].get("messages", [])
+
+@app.delete("/api/chats/{room_id}")
+async def delete_chat_room(room_id: str, x_session_id: Optional[str] = Header(None)):
+    sid = x_session_id or "default-session"
+    if sid in session_store and room_id in session_store[sid]:
+        del session_store[sid][room_id]
+        return {"success": True, "message": "삭제되었습니다."}
+    return {"success": False, "message": "방을 찾을 수 없습니다."}
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_with_mentor(req: ChatRequest):
+async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Header(None)):
     user_msg = req.message.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="메시지를 입력해 주세요.")
 
+    sid = x_session_id or "default-session"
+    if sid not in session_store:
+        session_store[sid] = {}
+
+    room_id = req.room_id
     now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1. Gemini API 연동이 되어있는 경우 실제 LLM 호출
+    # 방이 없으면 자동 생성
+    if not room_id or room_id not in session_store[sid]:
+        room_id = room_id or f"room-{uuid.uuid4().hex[:8]}"
+        initial_title = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
+        session_store[sid][room_id] = {
+            "title": initial_title,
+            "updated_at": now_iso,
+            "messages": []
+        }
+    else:
+        # 첫 메시지인 경우 방 제목 업데이트
+        if len(session_store[sid][room_id]["messages"]) == 0:
+            session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
+
+    # 1. RAG: 시스템에 수집된 최신 IT 이슈 및 인사이트 검색 (Retrieval)
+    retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
+    rag_context_snippets = []
+    referenced_meta = []
+
+    for art in retrieved_articles:
+        title = art.get("title", "")
+        insight = art.get("interview_insight", "")
+        summary = art.get("summary", "")
+        link = art.get("link", "")
+        source = art.get("source", "")
+        rag_context_snippets.append(
+            f"- 기사 제목: {title} ({source})\n  요약: {summary}\n  실무 핵심 인사이트: {insight}"
+        )
+        referenced_meta.append({
+            "title": title,
+            "link": link,
+            "source": source,
+            "insight": insight
+        })
+
+    # 2. Gemini API 호출 또는 고품질 폴백 응답 생성 (Generation)
+    reply_text = ""
+    model_name = ""
+
     if GEMINI_CLIENT:
         try:
             from google.genai import types
             prompt_parts = []
             if req.context_topic:
-                prompt_parts.append(f"[면접 주제/관련 기사]: {req.context_topic}\n")
-            
+                prompt_parts.append(f"[면접 주제/관련 기사]: {req.context_topic}")
+
+            if rag_context_snippets:
+                prompt_parts.append(
+                    "[시스템 수집 최신 IT 실무 이슈 및 인사이트 (RAG Context)]:\n" +
+                    "\n".join(rag_context_snippets) +
+                    "\n(위 최신 업계 동향 및 실무 인사이트를 답변에 자연스럽게 녹여내어 신뢰성을 높여주세요.)"
+                )
+
+            # 이전 대화 3개 포함
+            prev_msgs = session_store[sid][room_id]["messages"][-4:]
+            if prev_msgs:
+                history_str = "\n".join([f"{'지원자' if m['role']=='user' else '면접관'}: {m['content']}" for m in prev_msgs])
+                prompt_parts.append(f"[이전 대화 맥락]:\n{history_str}")
+
             prompt_parts.append(f"주니어 지원자: {user_msg}")
-            full_prompt = "\n".join(prompt_parts)
+            full_prompt = "\n\n".join(prompt_parts)
 
             config = types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
@@ -267,66 +449,81 @@ async def chat_with_mentor(req: ChatRequest):
                 contents=full_prompt,
                 config=config
             )
-            return ChatResponse(
-                reply=response.text,
-                model=f"Google Gemini ({GEMINI_MODEL})",
-                created_at=now_iso
-            )
+            reply_text = response.text
+            model_name = f"Google Gemini ({GEMINI_MODEL}) + RAG"
         except Exception as e:
             print(f"Gemini API 호출 에러: {e}")
-            # API 호출 실패 시 친절한 안내와 함께 폴백
 
-    # 2. API Key 미설정 또는 호출 제한 시 고품질 시니어 멘토 Mock 응답 제공
-    low = user_msg.lower()
-    if any(k in low for k in ["k8s", "쿠버네티스", "pod", "파드", "docker", "도커", "컨테이너"]):
-        mock_reply = (
-            "💡 **[시니어 면접관 코칭]**\n\n"
-            "좋은 질문입니다! 면접에서 컨테이너와 쿠버네티스 질문을 받을 때는 **'가상화와의 차이점(프로세스 격리)', '장애 복구(Self-Healing)', '무중단 배포'**라는 세 가지 핵심 키워드를 반드시 언급해야 높은 점수를 받습니다.\n\n"
-            "**1. 핵심 답변 포인트:**\n"
-            "- 도커는 Host OS 커널을 공유하며 cgroups와 Linux namespaces를 통해 격리된 경량 실행 환경을 제공합니다.\n"
-            "- 쿠버네티스는 이를 프로덕션 스케일에서 Pod의 liveness/readiness probe를 통해 자율 복구하고, HPA를 통한 오토스케일링을 보장합니다.\n\n"
-            "**2. 면접관의 단골 꼬리 질문(Follow-up):**\n"
-            "- *'Pod가 CrashLoopBackOff 상태에 빠졌을 때 디버깅 순서는 어떻게 되나요?'*\n"
-            "- *'LivenessProbe와 ReadinessProbe의 차이점과 잘못 설정했을 때의 위험성은?'*"
-        )
-    elif any(k in low for k in ["보안", "취약점", "cve", "제로트러스트", "인증", "jwt"]):
-        mock_reply = (
-            "💡 **[시니어 면접관 코칭]**\n\n"
-            "보안 관련 면접에서는 **'단일 방어선이 뚫렸을 때의 심층 방어(Defense in Depth)'** 관점으로 접근하는 것이 매우 인상적입니다.\n\n"
-            "**1. 핵심 답변 포인트:**\n"
-            "- 제로트러스트(Zero Trust)는 '내부망이라고 신뢰하지 않는다(Never Trust, Always Verify)'는 원칙입니다.\n"
-            "- 마이크로서비스 간 mTLS 암호화, 최소 권한 원칙(Principle of Least Privilege) IAM, WORM 백업 정책을 결합한 사례를 설명하세요.\n\n"
-            "**2. 면접관의 단골 꼬리 질문(Follow-up):**\n"
-            "- *'JWT의 Access Token 탈취 시 무효화(Revoke) 전략은 어떻게 설계하시겠습니까?'*\n"
-            "- *'공개된 CVE 취약점이 보고되었을 때 인프라 파이프라인에서 자동 차단하는 절차는?'*"
-        )
-    elif any(k in low for k in ["aws", "클라우드", "서버리스", "lambda", "트래픽", "장애"]):
-        mock_reply = (
-            "💡 **[시니어 면접관 코칭]**\n\n"
-            "클라우드 아키텍처 면접에서는 **'가용성(Availability)과 비용 최적화(FinOps)의 트레이드오프'**를 이해하고 있는지 확인합니다.\n\n"
-            "**1. 핵심 답변 포인트:**\n"
-            "- 대규모 트래픽 시에는 ALB/NLB + Auto Scaling Group을 기본으로, DB 부하를 줄이기 위한 Redis/ElastiCache 캐싱 레이어와 비동기 Kafka 큐 완충을 설계에 반영합니다.\n"
-            "- 장애 격리를 위해 서킷 브레이커(Circuit Breaker) 패턴을 실무에 적용해 본 경험을 어필하세요.\n\n"
-            "**2. 면접관의 단골 꼬리 질문(Follow-up):**\n"
-            "- *'DB 커넥션 풀이 고갈되어 500 에러가 폭증할 때 어떻게 대응하시겠습니까?'*\n"
-            "- *'Multi-AZ와 Multi-Region 배포 시 데이터 일관성과 지연 시간(Latency)은 어떻게 고려하나요?'*"
-        )
-    else:
-        mock_reply = (
-            f"💡 **[시니어 면접관 코칭]**\n\n"
-            f"**\"{user_msg}\"** 주제는 기술 면접에서 지원자의 실무 문제 해결 능력과 CS 기본기를 검증하기에 아주 좋은 질문입니다.\n\n"
-            "**1. 모범적인 답변 구조(STAR 기법):**\n"
-            "- **Situation(상황)**: 어떤 기술적 요구사항 또는 문제 상황이었는지 명확히 정의합니다.\n"
-            "- **Task(과제)**: 해결해야 할 핵심 병목이나 목표 지표를 수치로 제시합니다.\n"
-            "- **Action(행동)**: 대안 기술(A vs B) 중 왜 특정 아키텍처를 선택했는지 근거를 들어 설명합니다.\n"
-            "- **Result(결과)**: 도입 후 성능 개선 수치와 함께 겪었던 트레이드오프를 솔직히 공유합니다.\n\n"
-            "💡 *Tip: 환경 변수(`GEMINI_API_KEY`)를 설정하시면 실시간 Gemini Pro/Flash 모델이 맞춤형 실시간 면접 코칭을 제공합니다.*"
-        )
+    if not reply_text:
+        # 폴백 모드 (RAG 기사 정보 결합)
+        low = user_msg.lower()
+        rag_note = ""
+        if referenced_meta:
+            rag_note = f"\n\n📰 **관련 최신 이슈 참조:** [{referenced_meta[0]['title']}]({referenced_meta[0]['link']})\n> *{referenced_meta[0]['insight']}*"
+
+        if any(k in low for k in ["k8s", "쿠버네티스", "pod", "파드", "docker", "도커", "컨테이너"]):
+            reply_text = (
+                "💡 **[시니어 면접관 코칭: 컨테이너 & 쿠버네티스]**\n\n"
+                "컨테이너 질문에서는 **'가상화와의 격리 방식 차이', '장애 복구(Self-Healing)', '무중단 배포'**를 핵심으로 답변해야 합니다.\n\n"
+                "**1. 핵심 답변 포인트:**\n"
+                "- 도커는 Host 커널을 공유하며 Linux cgroups와 Namespaces를 통해 가볍게 격리합니다.\n"
+                "- 쿠버네티스는 Pod의 liveness/readiness probe를 통해 자율 복구하고 HPA로 스케일링을 보장합니다.\n\n"
+                "**2. 단골 꼬리 질문:**\n"
+                "- *'Pod가 CrashLoopBackOff 상태에 빠졌을 때 kubectl describe와 logs 디버깅 순서는?'*"
+                + rag_note
+            )
+            model_name = "TechPrep AI Mentor (Built-in) + RAG"
+        elif any(k in low for k in ["보안", "취약점", "cve", "제로트러스트", "인증", "jwt"]):
+            reply_text = (
+                "💡 **[시니어 면접관 코칭: 보안 및 침해사고 대응]**\n\n"
+                "보안 면접에서는 **'단일 방어선이 뚫렸을 때의 심층 방어(Defense in Depth)'** 관점으로 접근하는 것이 좋습니다.\n\n"
+                "**1. 핵심 답변 포인트:**\n"
+                "- 제로트러스트(Zero Trust)는 '내부망조차 신뢰하지 않는다(Never Trust, Always Verify)'는 원칙입니다.\n"
+                "- mTLS 암호화, 최소 권한 원칙 IAM, 불변 WORM 백업 정책을 결합한 사례를 설명하세요.\n\n"
+                "**2. 단골 꼬리 질문:**\n"
+                "- *'JWT Access Token 탈취 시 강제 만료(Revoke) 전략은?'*"
+                + rag_note
+            )
+            model_name = "TechPrep AI Mentor (Built-in) + RAG"
+        elif any(k in low for k in ["안녕", "반가", "하이", "hello"]):
+            reply_text = "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다. 어떤 기술 주제나 면접 고민이든 편하게 물어보세요!"
+            model_name = "TechPrep AI Mentor (Built-in)"
+        else:
+            reply_text = (
+                f"💡 **[시니어 면접관 코칭]**\n\n"
+                f"**\"{user_msg}\"** 질문에 대해 면접관이 듣고 싶어하는 핵심 포인트를 안내해 드릴게요.\n\n"
+                "**1. 모범적인 STAR 답변 구조:**\n"
+                "- **Situation(상황)**: 어떤 기술적 요구사항 또는 문제였는지 명확히 정의합니다.\n"
+                "- **Task(목표)**: 달성해야 할 지표(TPS, Latency 등)를 제시합니다.\n"
+                "- **Action(행동)**: 대안 기술 중 왜 특정 기술을 선택했는지 근거를 밝힙니다.\n"
+                "- **Result(결과)**: 도입 후 성과와 트레이드오프를 솔직히 설명합니다."
+                + rag_note
+            )
+            model_name = "TechPrep AI Mentor (Built-in) + RAG"
+
+    # 3. 세션 히스토리에 저장
+    session_store[sid][room_id]["updated_at"] = now_iso
+    session_store[sid][room_id]["messages"].append({
+        "id": f"msg-{uuid.uuid4().hex[:6]}",
+        "role": "user",
+        "content": user_msg,
+        "created_at": now_iso
+    })
+    session_store[sid][room_id]["messages"].append({
+        "id": f"msg-{uuid.uuid4().hex[:6]}",
+        "role": "model",
+        "content": reply_text,
+        "model": model_name,
+        "created_at": now_iso,
+        "referenced_articles": referenced_meta
+    })
 
     return ChatResponse(
-        reply=mock_reply,
-        model="TechPrep AI Mentor (Built-in)",
-        created_at=now_iso
+        room_id=room_id,
+        reply=reply_text,
+        model=model_name,
+        created_at=now_iso,
+        referenced_articles=referenced_meta
     )
 
 # --- Frontend Static Files Serving (포트 8080 통합 서빙) ---

@@ -249,77 +249,119 @@
         <!-- Chat Widget Panel (Initially Hidden) -->
         <div 
             id="chat-panel" 
-            class="hidden fixed sm:absolute bottom-0 right-0 sm:bottom-16 sm:right-0 w-full sm:w-96 max-w-[95vw] h-[580px] bg-white rounded-3xl shadow-2xl border border-indigo-100 flex flex-col overflow-hidden z-50 transition-all duration-300"
+            class="hidden fixed sm:absolute bottom-0 right-0 sm:bottom-16 sm:right-0 w-full sm:w-[500px] max-w-[96vw] h-[640px] max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-indigo-100 flex flex-col overflow-hidden z-50 transition-all duration-300"
         >
             <!-- Chat Header -->
-            <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
-                <div class="flex items-center space-x-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                        <i class="fa-solid fa-user-tie text-white text-base"></i>
+            <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-3.5 text-white flex items-center justify-between shrink-0 shadow-sm">
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleRoomSidebar()" id="sidebar-toggle-btn" class="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition flex items-center" title="대화 목록 보기">
+                        <i class="fa-solid fa-bars text-sm"></i>
+                    </button>
+                    <div class="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shrink-0">
+                        <i class="fa-solid fa-user-tie text-white text-sm"></i>
                     </div>
                     <div>
                         <div class="flex items-center space-x-1.5">
-                            <h3 class="text-sm font-bold">시니어 DevOps 면접관</h3>
-                            <span class="text-[9px] bg-emerald-400/30 text-emerald-100 border border-emerald-300/40 px-1.5 py-0.2 rounded-full font-medium">AI 멘토</span>
+                            <h3 class="text-xs font-bold truncate max-w-[170px]" id="current-room-title">새 대화</h3>
+                            <span class="text-[9px] bg-emerald-400/30 text-emerald-100 border border-emerald-300/40 px-1.5 py-0.2 rounded-full font-medium">RAG AI</span>
                         </div>
-                        <p class="text-[11px] text-indigo-100">기술 면접 꼬리 질문 & 모범 답변 코칭</p>
+                        <p class="text-[10px] text-indigo-100">최신 IT 뉴스 참조 & 실시간 면접 코칭</p>
                     </div>
                 </div>
-                <button onclick="toggleChat()" class="text-white/80 hover:text-white p-1 rounded-lg transition" title="닫기">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <!-- Messages Stream Area -->
-            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/60 custom-scrollbar text-xs">
-                <!-- Welcome Message -->
-                <div class="flex items-start space-x-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                        <i class="fa-solid fa-robot text-xs"></i>
-                    </div>
-                    <div class="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed space-y-1.5">
-                        <p class="font-bold text-indigo-600 flex items-center gap-1">
-                            <i class="fa-solid fa-hand text-amber-500"></i> 안녕하세요!
-                        </p>
-                        <p>IT 대기업 10년 차 시니어 DevOps / 백엔드 면접관입니다.</p>
-                        <p class="text-slate-600 text-[11px]">
-                            궁금한 기술 원리, 실무 아키텍처 고민, 혹은 <strong>"쿠버네티스 장애 대응 질문 어떻게 답해야 하나요?"</strong>처럼 면접 팁을 편하게 물어보세요!
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Action Topics -->
-            <div class="px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0 text-[11px]">
-                <button onclick="sendQuickPrompt('쿠버네티스 Pod 장애 복구 질문 답변 요령 알려줘')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 transition">
-                    💡 K8s 장애 복구
-                </button>
-                <button onclick="sendQuickPrompt('제로트러스트 보안 질문에서 점수 따는 법')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 transition">
-                    🛡️ 제로트러스트
-                </button>
-                <button onclick="sendQuickPrompt('대규모 트래픽 분산과 캐싱 전략 답변 구조')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-1 rounded-full text-slate-600 transition">
-                    ⚡ 대규모 트래픽
-                </button>
-            </div>
-
-            <!-- Chat Input Area -->
-            <div class="p-3 bg-white border-t border-slate-200/80 shrink-0">
-                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center space-x-2">
-                    <input 
-                        type="text" 
-                        id="chat-input" 
-                        placeholder="면접관에게 질문하기... (예: K8s 롤링배포)" 
-                        class="flex-1 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
-                        autocomplete="off"
-                    >
-                    <button 
-                        type="submit" 
-                        id="chat-send-btn"
-                        class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 active:scale-95 transition shrink-0"
-                    >
-                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                <div class="flex items-center space-x-1">
+                    <button onclick="createNewChatRoom()" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-semibold text-white transition flex items-center space-x-1" title="새 대화 시작">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span class="hidden sm:inline">New Chat</span>
                     </button>
-                </form>
+                    <button onclick="toggleChat()" class="text-white/80 hover:text-white p-1 rounded-lg transition" title="닫기">
+                        <i class="fa-solid fa-xmark text-base"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body Area: Side-by-Side or Overlay for Chat Rooms -->
+            <div class="flex-1 flex overflow-hidden relative">
+                <!-- Chat Rooms Sidebar (Drawer) -->
+                <div 
+                    id="chat-rooms-sidebar" 
+                    class="hidden absolute inset-y-0 left-0 w-64 bg-slate-900 text-white p-3.5 z-20 flex flex-col justify-between shadow-xl border-r border-slate-800 transition-all duration-200"
+                >
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-comments text-indigo-400"></i>대화 내역 (Sessions)
+                            </span>
+                            <button onclick="toggleRoomSidebar()" class="text-slate-400 hover:text-white text-xs">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                        </div>
+                        <button onclick="createNewChatRoom()" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm">
+                            <i class="fa-solid fa-plus text-[10px]"></i>새 대화 시작
+                        </button>
+                        <div id="room-list" class="space-y-1.5 overflow-y-auto max-h-[420px] custom-scrollbar text-xs">
+                            <!-- Dynamic Room Items -->
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-fingerprint text-indigo-400"></i>익명 세션 ID:</span>
+                        <span id="session-badge" class="font-mono text-slate-300">...</span>
+                    </div>
+                </div>
+
+                <!-- Main Messages View -->
+                <div class="flex-1 flex flex-col bg-slate-50/60 overflow-hidden w-full">
+                    <!-- Messages Stream Area -->
+                    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3.5 custom-scrollbar text-xs">
+                        <!-- Welcome Message -->
+                        <div class="flex items-start space-x-2.5">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                <i class="fa-solid fa-robot text-xs"></i>
+                            </div>
+                            <div class="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed space-y-1.5">
+                                <p class="font-bold text-indigo-600 flex items-center gap-1">
+                                    <i class="fa-solid fa-hand text-amber-500"></i> 안녕하세요!
+                                </p>
+                                <p>IT 대기업 10년 차 시니어 DevOps / 백엔드 면접관입니다.</p>
+                                <p class="text-slate-600 text-[11px]">
+                                    궁금한 기술 원리, 실무 아키텍처 고민, 혹은 <strong>"쿠버네티스 장애 대응 질문 어떻게 답해야 하나요?"</strong>처럼 면접 팁을 편하게 물어보세요! 시스템의 실시간 IT 이슈를 기반(RAG)으로 명쾌하게 답변해 드립니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Action Topics -->
+                    <div class="px-3 py-1.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0 text-[11px]">
+                        <button onclick="sendQuickPrompt('최신 쿠버네티스 장애 복구 면접 답변 요령 알려줘')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-slate-600 transition">
+                            💡 K8s 장애 복구
+                        </button>
+                        <button onclick="sendQuickPrompt('제로트러스트 및 최근 CVE 취약점 대응 질문 팁')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-slate-600 transition">
+                            🛡️ 제로트러스트 & CVE
+                        </button>
+                        <button onclick="sendQuickPrompt('대규모 트래픽 분산과 캐싱 전략 답변 구조')" class="shrink-0 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-slate-600 transition">
+                            ⚡ 대규모 트래픽
+                        </button>
+                    </div>
+
+                    <!-- Chat Input Area -->
+                    <div class="p-3 bg-white border-t border-slate-200/80 shrink-0">
+                        <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center space-x-2">
+                            <input 
+                                type="text" 
+                                id="chat-input" 
+                                placeholder="면접관에게 질문하기... (예: K8s 롤링배포)" 
+                                class="flex-1 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
+                                autocomplete="off"
+                            >
+                            <button 
+                                type="submit" 
+                                id="chat-send-btn"
+                                class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 active:scale-95 transition shrink-0"
+                            >
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -566,6 +608,164 @@
 
         document.addEventListener('DOMContentLoaded', loadPrepData);
 
+        // --- Anonymous Session & Chat History Management ---
+        const SESSION_STORAGE_KEY = 'techprep_session_id';
+        const CHAT_ROOMS_STORAGE_KEY = 'techprep_chat_rooms';
+        const ACTIVE_ROOM_KEY = 'techprep_active_room_id';
+
+        let sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (!sessionId) {
+            sessionId = 'user-' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            ).slice(0, 12);
+            localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+        }
+
+        let chatRooms = [];
+        let activeRoomId = null;
+
+        function initChatSession() {
+            const badge = document.getElementById('session-badge');
+            if (badge) badge.textContent = sessionId.slice(0, 8);
+
+            // 로컬 스토리지에서 방 목록 복원
+            try {
+                chatRooms = JSON.parse(localStorage.getItem(CHAT_ROOMS_STORAGE_KEY)) || [];
+            } catch (e) {
+                chatRooms = [];
+            }
+
+            activeRoomId = localStorage.getItem(ACTIVE_ROOM_KEY);
+
+            if (chatRooms.length === 0) {
+                createNewChatRoom(false);
+            } else {
+                if (!activeRoomId || !chatRooms.find(r => r.id === activeRoomId)) {
+                    activeRoomId = chatRooms[0].id;
+                }
+                renderRoomList();
+                loadRoomMessages(activeRoomId);
+            }
+        }
+
+        function toggleRoomSidebar() {
+            const sidebar = document.getElementById('chat-rooms-sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+
+        function createNewChatRoom(switchImmediately = true) {
+            const newRoomId = 'room-' + Date.now().toString(36);
+            const newRoom = {
+                id: newRoomId,
+                title: '새 대화',
+                updated_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                messages: []
+            };
+
+            chatRooms.unshift(newRoom);
+            saveChatRooms();
+
+            if (switchImmediately) {
+                switchChatRoom(newRoomId);
+                const sidebar = document.getElementById('chat-rooms-sidebar');
+                if (!sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        }
+
+        function switchChatRoom(roomId) {
+            activeRoomId = roomId;
+            localStorage.setItem(ACTIVE_ROOM_KEY, roomId);
+            renderRoomList();
+            loadRoomMessages(roomId);
+        }
+
+        function deleteChatRoom(e, roomId) {
+            e.stopPropagation();
+            if (chatRooms.length <= 1) {
+                createNewChatRoom(false);
+            }
+            chatRooms = chatRooms.filter(r => r.id !== roomId);
+            saveChatRooms();
+
+            if (activeRoomId === roomId) {
+                activeRoomId = chatRooms[0].id;
+            }
+            renderRoomList();
+            loadRoomMessages(activeRoomId);
+        }
+
+        function saveChatRooms() {
+            localStorage.setItem(CHAT_ROOMS_STORAGE_KEY, JSON.stringify(chatRooms));
+            localStorage.setItem(ACTIVE_ROOM_KEY, activeRoomId);
+        }
+
+        function renderRoomList() {
+            const container = document.getElementById('room-list');
+            if (!container) return;
+
+            container.innerHTML = chatRooms.map(room => {
+                const isActive = room.id === activeRoomId;
+                return `
+                    <div 
+                        onclick="switchChatRoom('${room.id}')"
+                        class="group flex items-center justify-between p-2 rounded-xl cursor-pointer transition ${isActive ? 'bg-indigo-600/30 border border-indigo-500/50 text-white font-semibold' : 'hover:bg-slate-800 text-slate-300'}"
+                    >
+                        <div class="flex items-center space-x-2 truncate">
+                            <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-indigo-400' : 'text-slate-500'}"></i>
+                            <span class="truncate max-w-[130px]">${room.title}</span>
+                        </div>
+                        <button 
+                            onclick="deleteChatRoom(event, '${room.id}')" 
+                            class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 text-xs transition"
+                            title="방 삭제"
+                        >
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            const current = chatRooms.find(r => r.id === activeRoomId);
+            const titleElem = document.getElementById('current-room-title');
+            if (titleElem && current) {
+                titleElem.textContent = current.title;
+            }
+        }
+
+        function loadRoomMessages(roomId) {
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.innerHTML = '';
+
+            const room = chatRooms.find(r => r.id === roomId);
+            if (!room || room.messages.length === 0) {
+                // 초기 환영 메시지
+                messagesContainer.innerHTML = `
+                    <div class="flex items-start space-x-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                            <i class="fa-solid fa-robot text-xs"></i>
+                        </div>
+                        <div class="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed space-y-1.5">
+                            <p class="font-bold text-indigo-600 flex items-center gap-1">
+                                <i class="fa-solid fa-hand text-amber-500"></i> 안녕하세요!
+                            </p>
+                            <p>IT 대기업 10년 차 시니어 DevOps / 백엔드 면접관입니다.</p>
+                            <p class="text-slate-600 text-[11px]">
+                                궁금한 기술 원리나 실무 고민, 면접 팁을 편하게 물어보세요! 시스템이 수집한 실시간 IT 이슈를 기반(RAG)으로 정확하게 코칭해 드립니다.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            room.messages.forEach(msg => {
+                appendChatMessage(msg.role, msg.content, msg.model, msg.references, false);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
         // --- AI Mentor Chatbot UI Logic ---
         function toggleChat() {
             const panel = document.getElementById('chat-panel');
@@ -591,6 +791,30 @@
             sendQuickPrompt(prompt);
         }
 
+        // 클라이언트 사이드 RAG 기사 검색기
+        function searchClientRAGArticles(query) {
+            if (!allArticles || allArticles.length === 0) return [];
+            const tokens = query.toLowerCase().match(/[A-Za-z0-9가-힣]{2,}/g) || [];
+            const stopwords = ["어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변"];
+            const keywords = tokens.filter(t => !stopwords.includes(t));
+            if (keywords.length === 0) return [];
+
+            const scored = [];
+            allArticles.forEach(art => {
+                const text = `${art.title} ${art.summary} ${art.interview_insight} ${(art.keywords||[]).join(' ')}`.toLowerCase();
+                let score = 0;
+                keywords.forEach(kw => {
+                    if (art.title.toLowerCase().includes(kw)) score += 5;
+                    if ((art.keywords||[]).some(k => k.toLowerCase().includes(kw))) score += 4;
+                    if ((art.interview_insight||'').toLowerCase().includes(kw)) score += 3;
+                    if (text.includes(kw)) score += 1;
+                });
+                if (score > 0) scored.push({ score, art });
+            });
+            scored.sort((a, b) => b.score - a.score);
+            return scored.slice(0, 2).map(s => s.art);
+        }
+
         async function handleChatSubmit(e) {
             e.preventDefault();
             const input = document.getElementById('chat-input');
@@ -604,40 +828,73 @@
             input.disabled = true;
             sendBtn.disabled = true;
 
+            // 현재 룸에 저장
+            const currentRoom = chatRooms.find(r => r.id === activeRoomId);
+            if (currentRoom) {
+                if (currentRoom.messages.length === 0) {
+                    currentRoom.title = message.slice(0, 16) + (message.length > 16 ? '...' : '');
+                    renderRoomList();
+                }
+                currentRoom.messages.push({ role: 'user', content: message, timestamp: Date.now() });
+                saveChatRooms();
+            }
+
             // 2. Append Loading Skeleton
             const loadingId = 'loading-' + Date.now();
             appendLoadingSkeleton(loadingId);
 
             try {
-                // 1. 로컬 또는 백엔드 서버가 있는 경우 /api/chat 호출
                 let reply = null;
                 let model = null;
+                let references = null;
 
+                // 1. Render 또는 로컬 백엔드 호출 시도 (RAG & Session 헤더 포함)
                 try {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message }),
-                        signal: AbortSignal.timeout(4000)
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Session-ID': sessionId
+                        },
+                        body: JSON.stringify({ 
+                            message, 
+                            room_id: activeRoomId 
+                        }),
+                        signal: AbortSignal.timeout(4500)
                     });
                     if (response.ok) {
                         const data = await response.json();
                         reply = data.reply;
                         model = data.model;
+                        references = data.referenced_articles;
                     }
                 } catch (netErr) {
-                    console.log('Backend /api/chat unreachable (GitHub Pages mode). Switching to client-side Mentor Engine.');
+                    console.log('Backend /api/chat unreachable. Running Client-side RAG Engine.');
                 }
 
-                // 2. GitHub Pages 환경 (백엔드 없는 정적 호스팅)이거나 서버 응답 없을 때 스마트 클라이언트 멘토 엔진 동작
+                // 2. GitHub Pages 모드 또는 서버 응답 없을 때: 클라이언트 RAG 엔진 동작
                 if (!reply) {
-                    const clientReply = generateClientMentorReply(message);
+                    const ragArticles = searchClientRAGArticles(message);
+                    const clientReply = generateClientMentorReply(message, ragArticles);
                     reply = clientReply.reply;
                     model = clientReply.model;
+                    references = clientReply.references;
                 }
 
                 removeLoadingSkeleton(loadingId);
-                appendChatMessage('model', reply, model);
+                appendChatMessage('model', reply, model, references);
+
+                // 응답 히스토리 저장
+                if (currentRoom) {
+                    currentRoom.messages.push({ 
+                        role: 'model', 
+                        content: reply, 
+                        model: model, 
+                        references: references,
+                        timestamp: Date.now() 
+                    });
+                    saveChatRooms();
+                }
             } catch (err) {
                 removeLoadingSkeleton(loadingId);
                 appendChatMessage('model', '⚠️ 죄송합니다. 답변을 생성하는 중 일시적인 오류가 발생했습니다. 다시 시도해 주세요.');
@@ -648,14 +905,32 @@
             }
         }
 
-        // GitHub Pages 전용 클라이언트 사이드 시니어 면접관 지능형 응답 엔진
-        function generateClientMentorReply(userMsg) {
+        // GitHub Pages 전용 클라이언트 사이드 RAG + 시니어 면접관 지능형 응답 엔진
+        function generateClientMentorReply(userMsg, ragArticles = []) {
             const low = userMsg.toLowerCase();
+            let referencesMeta = null;
+            let ragSnippetHtml = "";
+
+            if (ragArticles && ragArticles.length > 0) {
+                referencesMeta = ragArticles.map(a => ({
+                    title: a.title,
+                    link: a.link,
+                    source: a.source,
+                    insight: a.interview_insight
+                }));
+                const topArt = ragArticles[0];
+                ragSnippetHtml = `<div class="mt-2.5 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/70 text-[11px] text-slate-700 space-y-1">` +
+                                 `<div class="font-bold text-indigo-700 flex items-center gap-1"><i class="fa-solid fa-newspaper text-xs"></i> 관련 실시간 테크 이슈 (RAG)</div>` +
+                                 `<div class="font-semibold text-slate-800"><a href="${topArt.link}" target="_blank" class="hover:underline">${topArt.title}</a> (${topArt.source})</div>` +
+                                 `<div class="text-slate-600 pl-2 border-l-2 border-indigo-400"><em>${topArt.interview_insight || topArt.summary}</em></div>` +
+                                 `</div>`;
+            }
 
             if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello')) {
                 return {
-                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다.<br><br>쿠버네티스, 대규모 트래픽 분산, 보안/인증, 클라우드 아키텍처 등 궁금한 기술 원리나 실제 면접에서 당황하기 쉬운 질문이 있다면 편하게 물어보세요! 지원자의 실무 경쟁력을 한 단계 높여드릴게요.",
-                    model: "TechPrep AI Mentor (GitHub Pages Mode)"
+                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다.<br><br>쿠버네티스, 대규모 트래픽 분산, 보안/인증, 클라우드 아키텍처 등 궁금한 기술 원리나 실제 면접 질문이 있다면 편하게 물어보세요! 시스템에 수집된 최신 실무 이슈를 바탕으로 정확하게 코칭해 드릴게요." + ragSnippetHtml,
+                    model: "TechPrep AI Mentor (RAG Client Mode)",
+                    references: referencesMeta
                 };
             }
 
@@ -668,8 +943,10 @@
                            "- 쿠버네티스는 이를 프로덕션 레벨에서 Pod의 Liveness/Readiness Probe를 통해 자율 복구하고, HPA(수평 자동확장)와 PDB(Disruption Budget)를 통해 무중단성을 보장합니다.<br><br>" +
                            "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
                            "• <em>'Pod가 CrashLoopBackOff 상태에 빠졌을 때 kubectl describe와 logs를 활용한 디버깅 순서는?'</em><br>" +
-                           "• <em>'ReadinessProbe가 실패했을 때 서비스 엔드포인트에서 Pod는 어떻게 처리되나요?'</em>",
-                    model: "TechPrep AI Mentor (GitHub Pages Mode)"
+                           "• <em>'ReadinessProbe가 실패했을 때 서비스 엔드포인트에서 Pod는 어떻게 처리되나요?'</em>" +
+                           ragSnippetHtml,
+                    model: "TechPrep AI Mentor (RAG Client Mode)",
+                    references: referencesMeta
                 };
             }
 
@@ -682,8 +959,10 @@
                            "- 마이크로서비스 간 mTLS 암호화, 최소 권한 원칙(Least Privilege) IAM, WORM(Write Once Read Many) 불변 백업 정책을 실제 프로젝트에 적용한 것처럼 어필하세요.<br><br>" +
                            "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
                            "• <em>'JWT의 Access Token이 탈취되었을 때 서버 사이드에서 이를 강제 만료(Revoke)시킬 전략은?'</em><br>" +
-                           "• <em>'RCE(원격 코드 실행) 취약점이 발견되었을 때 파이프라인 상에서의 긴급 격리 프로세스는?'</em>",
-                    model: "TechPrep AI Mentor (GitHub Pages Mode)"
+                           "• <em>'RCE(원격 코드 실행) 취약점이 발견되었을 때 파이프라인 상에서의 긴급 격리 프로세스는?'</em>" +
+                           ragSnippetHtml,
+                    model: "TechPrep AI Mentor (RAG Client Mode)",
+                    references: referencesMeta
                 };
             }
 
@@ -696,8 +975,10 @@
                            "- 장애 전파를 막기 위해 서킷 브레이커(Circuit Breaker) 패턴과 Graceful Degradation(부분 기능 제한) 설계를 언급하세요.<br><br>" +
                            "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
                            "• <em>'DB 커넥션 풀이 고갈되어 500 에러가 급증할 때 HikariCP/RDS Proxy로 어떻게 해결하시겠습니까?'</em><br>" +
-                           "• <em>'서버리스(Lambda) 환경에서 콜드 스타트 지연을 줄이기 위한 최적화 기법은?'</em>",
-                    model: "TechPrep AI Mentor (GitHub Pages Mode)"
+                           "• <em>'서버리스(Lambda) 환경에서 콜드 스타트 지연을 줄이기 위한 최적화 기법은?'</em>" +
+                           ragSnippetHtml,
+                    model: "TechPrep AI Mentor (RAG Client Mode)",
+                    references: referencesMeta
                 };
             }
 
@@ -708,21 +989,40 @@
                        `• <strong>Situation(상황)</strong>: 직면했던 기술적 문제나 병목 지점을 수치와 함께 정의합니다.<br>` +
                        `• <strong>Task(목표)</strong>: 시스템의 목표 처리량(RPS) 또는 가용성 목표를 명시합니다.<br>` +
                        `• <strong>Action(행동)</strong>: 여러 대안(A vs B) 중 왜 이 기술/아키텍처를 선택했는지 타당성을 설명합니다.<br>` +
-                       `• <strong>Result(결과)</strong>: 개선된 지표와 함께 겪었던 엔지니어링 트레이드오프를 솔직하게 덧붙입니다.<br><br>` +
-                       `💬 <em>추가로 궁금한 세부 기술 키워드(예: Docker, K8s, Redis, Zero-Trust 등)를 입력해 주시면 더 구체적인 꼬리 질문을 짚어드릴게요!</em>`,
-                model: "TechPrep AI Mentor (GitHub Pages Mode)"
+                       `• <strong>Result(결과)</strong>: 개선된 지표와 함께 겪었던 엔지니어링 트레이드오프를 솔직하게 덧붙입니다.` +
+                       ragSnippetHtml,
+                model: "TechPrep AI Mentor (RAG Client Mode)",
+                references: referencesMeta
             };
         }
 
-        function appendChatMessage(role, text, modelName) {
+        function appendChatMessage(role, text, modelName, references = null, autoScroll = true) {
             const messagesContainer = document.getElementById('chat-messages');
             const isUser = (role === 'user');
 
-            // Format markdown-style bold and newlines
             let formattedText = text
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/\n/g, '<br>');
+
+            let refBadgeHtml = '';
+            if (references && references.length > 0) {
+                refBadgeHtml = `
+                    <div class="pt-2 border-t border-slate-100 mt-2 space-y-1">
+                        <span class="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-magnifying-glass text-[9px]"></i> RAG 참조 기사 (${references.length}건):
+                        </span>
+                        <div class="flex flex-col gap-1">
+                            ${references.map(ref => `
+                                <a href="${ref.link}" target="_blank" class="text-[10px] text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 px-2 py-1 rounded-lg border border-slate-200 transition flex items-center justify-between">
+                                    <span class="truncate max-w-[280px]">📌 ${ref.title}</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[8px] text-slate-400"></i>
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
             const msgDiv = document.createElement('div');
             msgDiv.className = `flex items-start space-x-2.5 ${isUser ? 'justify-end' : ''}`;
@@ -743,13 +1043,19 @@
                     </div>
                     <div class="bg-white border border-slate-200/90 rounded-2xl rounded-tl-xs p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed text-xs space-y-1">
                         <div>${formattedText}</div>
-                        ${modelName ? `<div class="text-[9px] text-slate-400 font-medium pt-1 border-t border-slate-100 mt-1"><i class="fa-solid fa-microchip mr-1"></i>${modelName}</div>` : ''}
+                        ${refBadgeHtml}
+                        ${modelName ? `<div class="text-[9px] text-slate-400 font-medium pt-1 border-t border-slate-100 mt-1 flex items-center justify-between">
+                            <span><i class="fa-solid fa-microchip mr-1"></i>${modelName}</span>
+                            <span class="text-emerald-600"><i class="fa-solid fa-shield-check mr-0.5"></i>RAG 활성</span>
+                        </div>` : ''}
                     </div>
                 `;
             }
 
             messagesContainer.appendChild(msgDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            if (autoScroll) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
         }
 
         function appendLoadingSkeleton(loadingId) {
@@ -763,7 +1069,7 @@
                 </div>
                 <div class="bg-white border border-slate-200/90 rounded-2xl rounded-tl-xs p-3 shadow-xs text-slate-400 text-xs flex items-center space-x-2">
                     <i class="fa-solid fa-circle-notch fa-spin text-indigo-500"></i>
-                    <span>시니어 면접관이 답변을 정리하고 있습니다...</span>
+                    <span>최신 IT 기사 검색(RAG) 및 면접 코칭 생성 중...</span>
                 </div>
             `;
             messagesContainer.appendChild(loadDiv);
@@ -774,6 +1080,11 @@
             const elem = document.getElementById(loadingId);
             if (elem) elem.remove();
         }
+
+        // 페이지 로드 시 채팅 세션 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            initChatSession();
+        });
     </script>
 </body>
 </html>
