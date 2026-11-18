@@ -817,7 +817,10 @@
         function searchClientRAGArticles(query) {
             if (!allArticles || allArticles.length === 0) return [];
             const tokens = query.toLowerCase().match(/[A-Za-z0-9가-힣]{2,}/g) || [];
-            const stopwords = ["어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변"];
+            const stopwords = [
+                "어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변", "요령",
+                "신입", "개발자", "면접관", "어필", "가장", "좋을까", "좋을까요", "준비", "포트폴리오", "취업", "진로"
+            ];
             const keywords = tokens.filter(t => !stopwords.includes(t));
             if (keywords.length === 0) return [];
 
@@ -831,7 +834,7 @@
                     if ((art.interview_insight||'').toLowerCase().includes(kw)) score += 3;
                     if (text.includes(kw)) score += 1;
                 });
-                if (score > 0) scored.push({ score, art });
+                if (score >= 5) scored.push({ score, art });
             });
             scored.sort((a, b) => b.score - a.score);
             return scored.slice(0, 2).map(s => s.art);
