@@ -158,6 +158,8 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 api_status TEXT NOT NULL DEFAULT 'pending',
+                failed_login_attempts INTEGER DEFAULT 0,
+                block_reason TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -198,6 +200,8 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 api_status TEXT NOT NULL DEFAULT 'pending',
+                failed_login_attempts INTEGER DEFAULT 0,
+                block_reason TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -229,6 +233,16 @@ def init_db():
                 timestamp TEXT NOT NULL
             )
             """)
+
+        # Schema migrations for existing tables (failed_login_attempts, block_reason)
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN block_reason TEXT")
+        except Exception:
+            pass
 
         # Seed Admin User if not exists
         admin_user = os.environ.get("ADMIN_USERNAME", "admin").strip()
@@ -287,18 +301,75 @@ def create_user(username: str, password_hash: str, role: str = "user", api_statu
         "updated_at": now_iso
     }
 
-def update_user_api_status(username: str, new_status: str) -> bool:
+def update_user_api_status(username: str, new_status: str, block_reason: Optional[str] = None) -> bool:
     use_pg = is_postgres()
     now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     ph = "%s" if use_pg else "?"
     with get_db_cursor() as cursor:
-        cursor.execute(f"UPDATE users SET api_status = {ph}, updated_at = {ph} WHERE username = {ph}", (new_status, now_iso, username))
+        if new_status == "approved":
+            cursor.execute(
+                f"UPDATE users SET api_status = {ph}, failed_login_attempts = 0, block_reason = NULL, updated_at = {ph} WHERE username = {ph}",
+                (new_status, now_iso, username)
+            )
+        elif new_status == "blocked":
+            cursor.execute(
+                f"UPDATE users SET api_status = {ph}, block_reason = {ph}, updated_at = {ph} WHERE username = {ph}",
+                (new_status, block_reason, now_iso, username)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET api_status = {ph}, updated_at = {ph} WHERE username = {ph}",
+                (new_status, now_iso, username)
+            )
         affected = cursor.rowcount
         return affected > 0
 
+def increment_failed_login(username: str) -> int:
+    """Increments failed_login_attempts for user and returns the new count."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1 WHERE username = {ph}",
+            (username,)
+        )
+        cursor.execute(f"SELECT failed_login_attempts FROM users WHERE username = {ph}", (username,))
+        row = cursor.fetchone()
+        return int(row["failed_login_attempts"] if row and row["failed_login_attempts"] is not None else 0)
+
+def reset_failed_login(username: str):
+    """Resets failed_login_attempts to 0 upon successful login."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"UPDATE users SET failed_login_attempts = 0 WHERE username = {ph}",
+            (username,)
+        )
+
+def bulk_approve_users(usernames: Optional[List[str]] = None) -> int:
+    """Approves multiple users. If usernames is None or empty, approves all pending users."""
+    use_pg = is_postgres()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        if usernames and len(usernames) > 0:
+            placeholders = ", ".join([ph] * len(usernames))
+            params = ["approved", 0, now_iso] + list(usernames)
+            cursor.execute(
+                f"UPDATE users SET api_status = {ph}, failed_login_attempts = {ph}, block_reason = NULL, updated_at = {ph} WHERE username IN ({placeholders}) AND role != 'admin'",
+                tuple(params)
+            )
+        else:
+            cursor.execute(
+                f"UPDATE users SET api_status = {ph}, failed_login_attempts = 0, block_reason = NULL, updated_at = {ph} WHERE api_status = 'pending' AND role != 'admin'",
+                ("approved", now_iso)
+            )
+        return cursor.rowcount
+
 def list_all_users() -> List[dict]:
     with get_db_cursor() as cursor:
-        cursor.execute("SELECT id, username, role, api_status, created_at, updated_at FROM users ORDER BY id ASC")
+        cursor.execute("SELECT id, username, role, api_status, failed_login_attempts, block_reason, created_at, updated_at FROM users ORDER BY id ASC")
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
 
@@ -369,12 +440,14 @@ def get_security_and_usage_stats() -> dict:
                 u.username,
                 u.role,
                 u.api_status,
+                u.failed_login_attempts,
+                u.block_reason,
                 COALESCE(SUM(CASE WHEN l.status = 'SUCCESS' THEN 1 ELSE 0 END), 0) AS login_success_count,
                 COALESCE(SUM(CASE WHEN l.status = 'FAILED' THEN 1 ELSE 0 END), 0) AS login_failed_count,
                 MAX(l.timestamp) AS last_login_at
             FROM users u
             LEFT JOIN login_logs l ON u.username = l.username
-            GROUP BY u.username, u.role, u.api_status
+            GROUP BY u.username, u.role, u.api_status, u.failed_login_attempts, u.block_reason
         """)
         user_stats = [format_row_dict(r) for r in cursor.fetchall()]
 
@@ -401,6 +474,8 @@ def get_security_and_usage_stats() -> dict:
             u["total_tokens_used"] = int(u_usage.get("total_tokens_used", 0))
             u["login_success_count"] = int(u.get("login_success_count", 0))
             u["login_failed_count"] = int(u.get("login_failed_count", 0))
+            u["failed_login_attempts"] = int(u.get("failed_login_attempts", 0) or 0)
+            u["block_reason"] = u.get("block_reason") or ""
 
         # Global token usage & call count
         cursor.execute("""
@@ -413,6 +488,30 @@ def get_security_and_usage_stats() -> dict:
             WHERE action = 'CHAT_API' AND status = 'SUCCESS'
         """)
         token_row = dict(cursor.fetchone() or {})
+
+        # RAG vs Normal Chat Stats from usage_logs
+        cursor.execute("""
+            SELECT 
+                COUNT(*) AS total_chat_calls,
+                COALESCE(SUM(CASE WHEN details LIKE '%rag=True%' THEN 1 ELSE 0 END), 0) AS rag_chat_calls,
+                COALESCE(SUM(CASE WHEN details NOT LIKE '%rag=True%' OR details IS NULL THEN 1 ELSE 0 END), 0) AS normal_chat_calls
+            FROM usage_logs
+            WHERE action = 'CHAT_API' AND status = 'SUCCESS'
+        """)
+        rag_row = dict(cursor.fetchone() or {})
+        total_chat_calls = int(rag_row.get("total_chat_calls", 0))
+        rag_chat_calls = int(rag_row.get("rag_chat_calls", 0))
+        normal_chat_calls = int(rag_row.get("normal_chat_calls", 0))
+        rag_ratio_percent = round((rag_chat_calls / total_chat_calls) * 100, 1) if total_chat_calls > 0 else 0.0
+
+        # Calculate token share % per user
+        overall_total_tokens = int(token_row.get("total_tokens", 0))
+        for u in user_stats:
+            user_tokens = u["total_tokens_used"]
+            if overall_total_tokens > 0:
+                u["token_share_percent"] = round((user_tokens / overall_total_tokens) * 100, 1)
+            else:
+                u["token_share_percent"] = 0.0
 
         # Overall totals
         cursor.execute("SELECT COUNT(*) AS total_users FROM users")
@@ -431,6 +530,12 @@ def get_security_and_usage_stats() -> dict:
             "prompt_tokens": int(token_row.get("total_prompt_tokens", 0)),
             "completion_tokens": int(token_row.get("total_completion_tokens", 0)),
             "total_tokens": int(token_row.get("total_tokens", 0))
+        },
+        "rag_stats": {
+            "total_chat_calls": total_chat_calls,
+            "rag_chat_calls": rag_chat_calls,
+            "normal_chat_calls": normal_chat_calls,
+            "rag_ratio_percent": rag_ratio_percent
         },
         "overview": {
             "total_users": int(total_users),

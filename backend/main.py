@@ -20,6 +20,9 @@ from backend.database import (
     get_user_by_username,
     create_user,
     update_user_api_status,
+    increment_failed_login,
+    reset_failed_login,
+    bulk_approve_users,
     list_all_users,
     record_login_log,
     record_usage_log,
@@ -387,6 +390,10 @@ class LoginRequest(BaseModel):
 class UserStatusUpdateRequest(BaseModel):
     username: str
     api_status: str  # pending, approved, blocked
+    reason: Optional[str] = None
+
+class BulkApproveRequest(BaseModel):
+    usernames: Optional[List[str]] = None
 
 def validate_password_strength(password: str) -> Optional[str]:
     """
@@ -459,9 +466,39 @@ async def login(req: LoginRequest, request: Request):
         record_login_log(username, client_ip, "FAILED", "UserNotFound")
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
 
+    # 차단된 계정 검사
+    if user["api_status"] == "blocked":
+        block_msg = f"해당 계정은 비정상 로그인 시도 또는 관리자에 의해 차단되었습니다."
+        if user.get("block_reason"):
+            block_msg += f" (사유: {user['block_reason']})"
+        record_login_log(username, client_ip, "FAILED", f"BlockedAccount: {user.get('block_reason') or 'No reason'}")
+        raise HTTPException(status_code=403, detail=block_msg)
+
+    # 비밀번호 검증
     if not verify_password(password, user["password_hash"]):
-        record_login_log(username, client_ip, "FAILED", "InvalidPassword")
-        raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+        # 실패 횟수 증가
+        fail_count = increment_failed_login(username)
+        # 5회 이상 실패 시 자동 차단 (admin 계정 제외)
+        if user.get("role") != "admin" and fail_count >= 5:
+            auto_reason = f"비정상 로그인 시도(연속 {fail_count}회 실패)로 인한 자동 차단"
+            update_user_api_status(username, "blocked", block_reason=auto_reason)
+            record_login_log(username, client_ip, "FAILED", f"AutoBlocked: {fail_count} consecutive failures")
+            record_usage_log(username, client_ip, "AUTO_BLOCK_USER", "SUCCESS", details=auto_reason)
+            raise HTTPException(
+                status_code=403,
+                detail=f"비밀번호가 5회 이상 연속 불일치하여 계정이 자동으로 차단되었습니다. 관리자에게 문의해 주세요."
+            )
+
+        rem_attempts = max(0, 5 - fail_count)
+        err_msg = "아이디 또는 비밀번호가 올바르지 않습니다."
+        if user.get("role") != "admin":
+            err_msg += f" (연속 실패 {fail_count}/5회 - 5회 누적 시 계정이 자동 차단됩니다.)"
+
+        record_login_log(username, client_ip, "FAILED", f"InvalidPassword (attempt {fail_count})")
+        raise HTTPException(status_code=401, detail=err_msg)
+
+    # 로그인 성공 시 실패 카운트 리셋
+    reset_failed_login(username)
 
     # Record successful login
     record_login_log(username, client_ip, "SUCCESS")
@@ -514,18 +551,40 @@ async def admin_update_user_status(req: UserStatusUpdateRequest, admin: dict = D
     if target_user["role"] == "admin" and req.api_status != "approved":
         raise HTTPException(status_code=400, detail="관리자 계정의 권한은 차단하거나 변경할 수 없습니다.")
 
-    ok = update_user_api_status(req.username, req.api_status)
+    ok = update_user_api_status(req.username, req.api_status, block_reason=req.reason)
     if not ok:
         raise HTTPException(status_code=500, detail="상태 업데이트에 실패했습니다.")
 
     client_ip = get_client_ip(request) if request else "unknown"
-    record_usage_log(admin["username"], client_ip, "UPDATE_USER_STATUS", "SUCCESS", details=f"Changed {req.username} to {req.api_status}")
+    detail_msg = f"Changed {req.username} to {req.api_status}"
+    if req.reason:
+        detail_msg += f" (Reason: {req.reason})"
+    record_usage_log(admin["username"], client_ip, "UPDATE_USER_STATUS", "SUCCESS", details=detail_msg)
 
     return {
         "success": True,
         "message": f"'{req.username}' 계정의 API 상태가 '{req.api_status}'(으)로 변경되었습니다.",
         "username": req.username,
-        "api_status": req.api_status
+        "api_status": req.api_status,
+        "block_reason": req.reason
+    }
+
+@app.post("/api/admin/users/bulk-approve")
+async def admin_bulk_approve_users(req: BulkApproveRequest, admin: dict = Depends(require_admin_user), request: Request = None):
+    affected = bulk_approve_users(req.usernames)
+    client_ip = get_client_ip(request) if request else "unknown"
+    record_usage_log(
+        admin["username"], 
+        client_ip, 
+        "BULK_APPROVE_USERS", 
+        "SUCCESS", 
+        details=f"Bulk approved {affected} users. Targeted: {req.usernames or 'ALL_PENDING'}"
+    )
+
+    return {
+        "success": True,
+        "message": f"총 {affected}명의 가입 대기 계정이 승인(approved)되었습니다.",
+        "affected_count": affected
     }
 
 @app.get("/api/admin/stats")

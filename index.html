@@ -903,6 +903,30 @@
         let currentAuditTab = 'login';
         let currentAuditUserFilter = '';
         let allAuditUsersList = [];
+        let currentUsageNoiseFilter = 'all';
+        let rawUsageLogsCache = [];
+
+        function setUsageNoiseFilter(filterMode) {
+            currentUsageNoiseFilter = filterMode;
+            const buttons = {
+                'all': document.getElementById('btn-noise-all'),
+                'chat_only': document.getElementById('btn-noise-chat'),
+                'failed_only': document.getElementById('btn-noise-failed'),
+                'hide_dashboard': document.getElementById('btn-noise-nodash')
+            };
+
+            for (const [key, btn] of Object.entries(buttons)) {
+                if (!btn) continue;
+                if (key === filterMode) {
+                    btn.className = 'px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white font-bold text-[11px] transition shadow-2xs';
+                } else {
+                    const textClass = (key === 'failed_only') ? 'text-rose-700 hover:bg-rose-50' : 'text-slate-700 hover:bg-slate-100';
+                    btn.className = `px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 ${textClass} font-bold text-[11px] transition`;
+                }
+            }
+
+            renderUsageLogs(rawUsageLogsCache);
+        }
 
         function switchAuditTab(tab) {
             currentAuditTab = tab;
@@ -1004,6 +1028,21 @@
             document.getElementById('adm-kpi-total-users').textContent = o.total_users || 0;
             document.getElementById('adm-kpi-total-logins').textContent = o.total_logins || 0;
 
+            // RAG Stats
+            const ragStats = data.rag_stats || {};
+            const ragRatioElem = document.getElementById('adm-kpi-rag-ratio');
+            if (ragRatioElem) {
+                ragRatioElem.textContent = `${ragStats.rag_ratio_percent || 0.0}%`;
+            }
+            const ragCallsElem = document.getElementById('adm-kpi-rag-calls');
+            if (ragCallsElem) {
+                ragCallsElem.textContent = (ragStats.rag_chat_calls || 0).toLocaleString();
+            }
+            const normalCallsElem = document.getElementById('adm-kpi-normal-calls');
+            if (normalCallsElem) {
+                normalCallsElem.textContent = (ragStats.normal_chat_calls || 0).toLocaleString();
+            }
+
             // 3. Progress bars
             const callsPct = Math.min(100, g.calls_usage_percent || 0);
             document.getElementById('adm-calls-bar').style.width = `${callsPct}%`;
@@ -1038,6 +1077,27 @@
         function renderUserStatsTable(users) {
             populateAuditUserFilterDropdown(users);
             const tbody = document.getElementById('adm-users-table-body');
+            const bulkContainer = document.getElementById('adm-bulk-approve-container');
+
+            // Check pending users count for bulk approve
+            const pendingUsers = (users || []).filter(u => u.api_status === 'pending' && u.role !== 'admin');
+            if (bulkContainer) {
+                if (pendingUsers.length > 0) {
+                    bulkContainer.innerHTML = `
+                        <button onclick="bulkApprovePendingUsers(${pendingUsers.length})" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition animate-pulse">
+                            <i class="fa-solid fa-check-double"></i>
+                            <span>대기 회원 (${pendingUsers.length}명) 일괄 승인</span>
+                        </button>
+                    `;
+                } else {
+                    bulkContainer.innerHTML = `
+                        <span class="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-check-circle text-emerald-500"></i> 승인 대기 회원 없음
+                        </span>
+                    `;
+                }
+            }
+
             if (!users || users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400">등록된 회원이 없습니다.</td></tr>';
                 return;
@@ -1048,7 +1108,8 @@
                 if (u.api_status === 'approved') {
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">허용 (approved)</span>';
                 } else if (u.api_status === 'blocked') {
-                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold border border-rose-200">차단 (blocked)</span>';
+                    const blockTooltip = u.block_reason ? `title="차단 사유: ${u.block_reason}"` : '';
+                    statusBadge = `<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold border border-rose-200 cursor-help" ${blockTooltip}>차단 (blocked)</span>`;
                 } else {
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold border border-amber-200">대기 (pending)</span>';
                 }
@@ -1067,24 +1128,36 @@
                         </div>
                     `;
 
+                const tokenShare = u.token_share_percent !== undefined ? u.token_share_percent : 0;
+                const tokensUsed = (u.total_tokens_used || 0).toLocaleString();
+
                 return `
                     <tr class="hover:bg-slate-50/80 transition">
                         <td class="py-3 px-4 font-bold text-slate-900 flex items-center gap-1.5">
                             <i class="fa-solid ${isAdmin ? 'fa-crown text-amber-500' : 'fa-user text-slate-400'}"></i>
-                            ${u.username}
+                            <div>
+                                <span>${u.username}</span>
+                                ${u.block_reason ? `<div class="text-[10px] text-rose-500 font-normal truncate max-w-[140px]" title="${u.block_reason}">사유: ${u.block_reason}</div>` : ''}
+                            </div>
                         </td>
                         <td class="py-3 px-4 font-semibold text-slate-600">${u.role}</td>
                         <td class="py-3 px-4">${statusBadge}</td>
                         <td class="py-3 px-4 text-center font-medium">
                             <span class="text-emerald-600 font-bold">${u.login_success_count || 0}</span> / 
                             <span class="text-rose-500 font-bold">${u.login_failed_count || 0}</span>
+                            ${(u.failed_login_attempts && u.failed_login_attempts > 0 && !isAdmin) ? `<div class="text-[10px] text-amber-600 font-bold">연속실패: ${u.failed_login_attempts}/5</div>` : ''}
                         </td>
                         <td class="py-3 px-4 text-center font-semibold text-slate-700">${u.dashboard_views || 0}회</td>
                         <td class="py-3 px-4 text-center font-medium">
                             <span class="text-indigo-600 font-bold">${u.chat_calls || 0}회</span> / 
                             <span class="text-rose-600 font-bold">${u.forbidden_calls || 0}회</span>
                         </td>
-                        <td class="py-3 px-4 text-center font-bold text-purple-700">${(u.total_tokens_used || 0).toLocaleString()}</td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="font-bold text-purple-700">${tokensUsed} <span class="text-[11px] font-semibold text-slate-500">(${tokenShare}%)</span></div>
+                            <div class="w-20 mx-auto bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                                <div class="bg-purple-600 h-1.5 rounded-full" style="width: ${Math.min(100, tokenShare)}%"></div>
+                            </div>
+                        </td>
                         <td class="py-3 px-4 text-right">${actionButtons}</td>
                     </tr>
                 `;
@@ -1092,15 +1165,22 @@
         }
 
         async function changeUserStatus(username, newStatus) {
-            if (!confirm(`'${username}' 계정의 API 접근 권한을 '${newStatus}'(으)로 변경하시겠습니까?`)) {
-                return;
+            let reason = null;
+            if (newStatus === 'blocked') {
+                reason = prompt(`'${username}' 계정을 차단하는 사유를 입력하세요 (선택 사항):`, '관리자 정책에 의한 차단');
+                if (reason === null) return; // user cancelled prompt
+                reason = reason.trim() || '관리자 수동 차단';
+            } else {
+                if (!confirm(`'${username}' 계정의 API 접근 권한을 '${newStatus}'(으)로 변경하시겠습니까?`)) {
+                    return;
+                }
             }
 
             try {
                 const res = await fetch(`${BACKEND_BASE_URL}/api/admin/users/status`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, api_status: newStatus })
+                    body: JSON.stringify({ username, api_status: newStatus, reason: reason })
                 });
                 const data = await res.json();
                 if (res.ok) {
@@ -1112,6 +1192,30 @@
             } catch (err) {
                 console.error('Error changing user status:', err);
                 alert('요청 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function bulkApprovePendingUsers(count) {
+            if (!confirm(`대기 중인 ${count}명의 회원을 모두 일괄 승인(approved)하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/users/bulk-approve`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || `${count}명의 회원이 승인되었습니다.`);
+                    loadAdminStats();
+                } else {
+                    alert(data.detail || '일괄 승인에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error('Error bulk approving users:', err);
+                alert('일괄 승인 요청 중 오류가 발생했습니다.');
             }
         }
 
@@ -1167,6 +1271,7 @@
                     if (currentAuditUserFilter) {
                         logs = logs.filter(l => l.username === currentAuditUserFilter);
                     }
+                    rawUsageLogsCache = logs;
                     renderUsageLogs(logs);
                 } else {
                     const err = await res.text();
@@ -1206,12 +1311,24 @@
 
         function renderUsageLogs(logs) {
             const tbody = document.getElementById('adm-usage-logs-body');
-            if (!logs || logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">기록된 사용 이력 로그가 없습니다.</td></tr>';
+            if (!logs) logs = [];
+
+            // Apply quick noise filtering
+            let filtered = logs;
+            if (currentUsageNoiseFilter === 'chat_only') {
+                filtered = filtered.filter(l => l.action === 'CHAT_API');
+            } else if (currentUsageNoiseFilter === 'failed_only') {
+                filtered = filtered.filter(l => l.status !== 'SUCCESS');
+            } else if (currentUsageNoiseFilter === 'hide_dashboard') {
+                filtered = filtered.filter(l => l.action !== 'DASHBOARD_VIEW');
+            }
+
+            if (!filtered || filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">조건에 부합하는 사용 이력 로그가 없습니다.</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = logs.map(l => {
+            tbody.innerHTML = filtered.map(l => {
                 let statusBadge = '';
                 if (l.status === 'SUCCESS') {
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">SUCCESS</span>';
@@ -2304,13 +2421,13 @@
             <!-- Modal Content (Scrollable) -->
             <div class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1 bg-slate-50/60">
                 <!-- 1. Top KPI Summary Cards -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                         <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
-                            <span>GEMINI API 연동 상태</span>
+                            <span>GEMINI 연동 상태</span>
                             <i class="fa-solid fa-key text-indigo-500"></i>
                         </div>
-                        <div class="text-xl font-extrabold text-emerald-600 mt-2 flex items-center gap-1.5" id="adm-kpi-key-status">
+                        <div class="text-lg font-extrabold text-emerald-600 mt-1 flex items-center gap-1.5" id="adm-kpi-key-status">
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             ACTIVE
                         </div>
@@ -2320,37 +2437,48 @@
                         </div>
                     </div>
 
-                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                         <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
-                            <span>누적 API 호출 횟수</span>
+                            <span>누적 API 호출</span>
                             <i class="fa-solid fa-paper-plane text-purple-500"></i>
                         </div>
-                        <div class="text-2xl font-black text-slate-800 mt-1" id="adm-kpi-total-calls">0회</div>
+                        <div class="text-xl font-black text-slate-800 mt-1" id="adm-kpi-total-calls">0회</div>
                         <div class="text-[10px] text-slate-500 mt-1">
-                            일일 무료 한도(1,500회) 대비 <strong id="adm-kpi-calls-percent" class="text-indigo-600">0%</strong>
+                            무료 한도 대비 <strong id="adm-kpi-calls-percent" class="text-indigo-600">0%</strong>
                         </div>
                     </div>
 
-                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                         <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
                             <span>누적 토큰 사용량</span>
                             <i class="fa-solid fa-microchip text-pink-500"></i>
                         </div>
-                        <div class="text-2xl font-black text-slate-800 mt-1" id="adm-kpi-total-tokens">0</div>
+                        <div class="text-xl font-black text-slate-800 mt-1" id="adm-kpi-total-tokens">0</div>
                         <div class="text-[10px] text-slate-500 mt-1">
                             입력: <span id="adm-kpi-prompt-tokens" class="font-semibold">0</span> | 출력: <span id="adm-kpi-comp-tokens" class="font-semibold">0</span>
                         </div>
                     </div>
 
-                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                         <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
-                            <span>총 회원수 / 로그인 성공</span>
+                            <span>RAG 활용 비율</span>
+                            <i class="fa-solid fa-diagram-project text-cyan-600"></i>
+                        </div>
+                        <div class="text-xl font-black text-cyan-700 mt-1" id="adm-kpi-rag-ratio">0.0%</div>
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            RAG <span id="adm-kpi-rag-calls" class="font-bold text-cyan-700">0</span>건 / 일반 <span id="adm-kpi-normal-calls" class="font-semibold">0</span>건
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs col-span-2 md:col-span-1">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                            <span>회원 / 로그인 성공</span>
                             <i class="fa-solid fa-users text-sky-500"></i>
                         </div>
-                        <div class="text-2xl font-black text-slate-800 mt-1">
+                        <div class="text-xl font-black text-slate-800 mt-1">
                             <span id="adm-kpi-total-users">0</span>명 / <span id="adm-kpi-total-logins" class="text-sky-600">0</span>회
                         </div>
-                        <div class="text-[10px] text-slate-400 mt-1">가입자 및 감사 추적 활성</div>
+                        <div class="text-[10px] text-slate-400 mt-1">보안 자동 차단 보호 활성</div>
                     </div>
                 </div>
 
@@ -2389,13 +2517,16 @@
 
                 <!-- 3. User Management & Permission Control Section -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                                 <i class="fa-solid fa-users-gear text-indigo-600"></i>
                                 <span>가입 회원 관리 & GEMINI API KEY 사용 권한 제어</span>
                             </h3>
                             <p class="text-xs text-slate-500 mt-0.5">승인(approved)된 계정만 백엔드 GEMINI_API_KEY를 호출할 수 있으며, pending 또는 blocked 계정은 403 차단됩니다.</p>
+                        </div>
+                        <div id="adm-bulk-approve-container" class="flex items-center gap-2">
+                            <!-- Populated dynamically if pending users exist -->
                         </div>
                     </div>
 
@@ -2409,7 +2540,7 @@
                                     <th class="py-3 px-4 text-center">로그인 (성공/실패)</th>
                                     <th class="py-3 px-4 text-center">대시보드 조회</th>
                                     <th class="py-3 px-4 text-center">API 호출 (성공/차단)</th>
-                                    <th class="py-3 px-4 text-center">누적 토큰</th>
+                                    <th class="py-3 px-4 text-center">누적 토큰 (점유율)</th>
                                     <th class="py-3 px-4 text-right">권한 변경 제어</th>
                                 </tr>
                             </thead>
@@ -2468,6 +2599,19 @@
 
                     <!-- Usage Logs Table -->
                     <div id="adm-usage-logs-view" class="hidden overflow-x-auto max-h-72 custom-scrollbar">
+                        <!-- Quick Noise Filter Controls -->
+                        <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span class="text-slate-500 font-bold flex items-center gap-1.5 text-[11px]">
+                                <i class="fa-solid fa-filter-circle-xmark text-indigo-500"></i> 노이즈 빠른 필터:
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button onclick="setUsageNoiseFilter('all')" id="btn-noise-all" class="px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white font-bold text-[11px] transition shadow-2xs">전체</button>
+                                <button onclick="setUsageNoiseFilter('chat_only')" id="btn-noise-chat" class="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[11px] transition">CHAT_API만 보기</button>
+                                <button onclick="setUsageNoiseFilter('failed_only')" id="btn-noise-failed" class="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-rose-700 hover:bg-rose-50 font-bold text-[11px] transition">실패·차단만 보기</button>
+                                <button onclick="setUsageNoiseFilter('hide_dashboard')" id="btn-noise-nodash" class="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[11px] transition">DASHBOARD_VIEW 숨기기</button>
+                            </div>
+                        </div>
+
                         <table class="w-full text-left border-collapse text-xs">
                             <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold">
                                 <tr>
