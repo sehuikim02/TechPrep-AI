@@ -752,7 +752,18 @@
                 keyElem.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> ${g.api_key_status || 'UNCONFIGURED'}`;
                 keyElem.className = 'text-xl font-extrabold text-rose-600 mt-2 flex items-center gap-1.5';
             }
-            document.getElementById('adm-kpi-model-name').textContent = g.primary_model || 'Gemini 3.5 Flash';
+            document.getElementById('adm-kpi-model-name').textContent = g.primary_model || 'Gemini 2.5 Flash';
+            const dbBadge = document.getElementById('adm-kpi-db-type');
+            if (dbBadge && data.db_type) {
+                dbBadge.textContent = data.db_type;
+                if (data.db_type === 'PostgreSQL') {
+                    dbBadge.className = 'font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300';
+                    dbBadge.title = '영구 저장소(PostgreSQL) 연동됨';
+                } else {
+                    dbBadge.className = 'font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300';
+                    dbBadge.title = 'Render 인스턴스 재시작 시 초기화될 수 있음 (DATABASE_URL 설정 권장)';
+                }
+            }
 
             // 2. Calls & Tokens
             document.getElementById('adm-kpi-total-calls').textContent = `${(t.total_calls || 0).toLocaleString()}회`;
@@ -2084,7 +2095,10 @@
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             ACTIVE
                         </div>
-                        <div class="text-[10px] text-slate-400 mt-1" id="adm-kpi-model-name">gemini-3.5-flash-lite</div>
+                        <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                            <span id="adm-kpi-model-name">gemini-2.5-flash</span>
+                            <span id="adm-kpi-db-type" class="font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">SQLite</span>
+                        </div>
                     </div>
 
                     <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
