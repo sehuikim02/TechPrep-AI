@@ -1226,10 +1226,6 @@
                     }
                     renderUsageLogs(logs);
                 } else {
-                if (res.ok) {
-                    const logs = await res.json();
-                    renderUsageLogs(Array.isArray(logs) ? logs : []);
-                } else {
                     const err = await res.text();
                     console.error('Failed to load usage logs:', res.status, err);
                     if (usageBody) usageBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-rose-500 font-semibold">사용 로그 조회 실패 (${res.status})</td></tr>`;
