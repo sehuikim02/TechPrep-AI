@@ -6,12 +6,30 @@ import random
 import re
 import uuid
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-app = FastAPI(title="DevOps Copilot - Autonomous Healing Agent", version="1.0.0")
+from backend.database import (
+    init_db,
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    get_user_by_username,
+    create_user,
+    update_user_api_status,
+    list_all_users,
+    record_login_log,
+    record_usage_log,
+    get_login_logs,
+    get_usage_logs,
+    get_security_and_usage_stats,
+    DB_PATH
+)
+
+app = FastAPI(title="TechPrep-AI & DevOps Copilot API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +43,7 @@ app.add_middleware(
 GEMINI_CLIENT = None
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"]
+GEMINI_KEY_STATUS = "UNCONFIGURED"  # HEALTHY, INVALID, UNCONFIGURED
 
 SYSTEM_INSTRUCTION = (
     "너는 IT 대기업의 10년 차 시니어 DevOps / 백엔드 엔지니어이자 다정하고 지혜로운 AI 커리어 & 기술 멘토야.\n"
@@ -61,10 +80,13 @@ try:
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if api_key:
         GEMINI_CLIENT = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
+        GEMINI_KEY_STATUS = "ACTIVE"
         print("✅ Gemini API Client Initialized successfully with v1beta.")
     else:
+        GEMINI_KEY_STATUS = "UNCONFIGURED"
         print("ℹ️ GEMINI_API_KEY / GOOGLE_API_KEY not found. Fallback mock mentor engine activated.")
 except Exception as e:
+    GEMINI_KEY_STATUS = "ERROR"
     print(f"⚠️ Gemini SDK Init failed: {e}. Fallback mock mentor engine activated.")
 
 # Docker SDK 연동 시도 (Docker 데몬 없을 경우 Mock 시뮬레이터로 자동 폴백)
@@ -115,7 +137,6 @@ def record_audit(phase: str, severity: str, message: str, details: Optional[Dict
         details=details or {}
     )
     audit_logs.append(log_entry)
-    # 최대 200개 유지
     if len(audit_logs) > 200:
         audit_logs.pop(0)
     print(f"[{log_entry.timestamp}] [{phase}] [{severity}] {message}")
@@ -166,7 +187,7 @@ async def autonomous_healing_worker():
                 server_state.status = "HEALING"
                 record_audit("ACT", "INFO", f"복구 조치 시작: {playbook} 플레이북 적용 중...")
                 
-                await asyncio.sleep(2)  # 조치 소요 시간 시뮬레이션
+                await asyncio.sleep(2)
                 
                 if DOCKER_AVAILABLE:
                     try:
@@ -190,11 +211,222 @@ async def autonomous_healing_worker():
 
 @app.on_event("startup")
 async def startup_event():
+    init_db()
     asyncio.create_task(autonomous_healing_worker())
 
-# --- API Endpoints ---
+# --- Auth Helper Dependencies ---
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def get_current_user_optional(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    if not authorization:
+        return None
+    token = authorization.replace("Bearer ", "").strip()
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    username = payload.get("sub")
+    if not username:
+        return None
+    user = get_user_by_username(username)
+    return user
+
+def get_current_user_required(authorization: Optional[str] = Header(None)) -> dict:
+    user = get_current_user_optional(authorization)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="로그인이 필요합니다. 유효한 인증 토큰을 전달해 주세요."
+        )
+    return user
+
+def require_admin_user(current_user: dict = Depends(get_current_user_required)) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 전용 기능입니다. 관리자 계정으로 로그인해 주세요."
+        )
+    return current_user
+
+# --- Authentication Schemas & Endpoints ---
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class UserStatusUpdateRequest(BaseModel):
+    username: str
+    api_status: str  # pending, approved, blocked
+
+@app.post("/api/auth/register")
+async def register(req: RegisterRequest, request: Request):
+    username = req.username.strip()
+    password = req.password.strip()
+    client_ip = get_client_ip(request)
+
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="아이디는 최소 3자 이상이어야 합니다.")
+    if not password or len(password) < 4:
+        raise HTTPException(status_code=400, detail="비밀번호는 최소 4자 이상이어야 합니다.")
+
+    existing = get_user_by_username(username)
+    if existing:
+        raise HTTPException(status_code=409, detail="이미 존재하는 아이디입니다.")
+
+    pw_hash = hash_password(password)
+    user = create_user(username=username, password_hash=pw_hash, role="user", api_status="pending")
+    record_usage_log(username, client_ip, "REGISTER", "SUCCESS", details="New user registered with pending status")
+
+    token = create_access_token({
+        "sub": user["username"],
+        "role": user["role"],
+        "api_status": user["api_status"]
+    })
+
+    return {
+        "message": "회원가입이 완료되었습니다. 관리자 승인 후 GEMINI AI 챗봇 기능을 사용할 수 있습니다.",
+        "user": {
+            "username": user["username"],
+            "role": user["role"],
+            "api_status": user["api_status"]
+        },
+        "token": token
+    }
+
+@app.post("/api/auth/login")
+async def login(req: LoginRequest, request: Request):
+    username = req.username.strip()
+    password = req.password.strip()
+    client_ip = get_client_ip(request)
+
+    user = get_user_by_username(username)
+    if not user:
+        record_login_log(username, client_ip, "FAILED", "UserNotFound")
+        raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    if not verify_password(password, user["password_hash"]):
+        record_login_log(username, client_ip, "FAILED", "InvalidPassword")
+        raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    # Record successful login
+    record_login_log(username, client_ip, "SUCCESS")
+
+    token = create_access_token({
+        "sub": user["username"],
+        "role": user["role"],
+        "api_status": user["api_status"]
+    })
+
+    return {
+        "message": "로그인 성공",
+        "user": {
+            "username": user["username"],
+            "role": user["role"],
+            "api_status": user["api_status"]
+        },
+        "token": token
+    }
+
+@app.get("/api/auth/me")
+async def get_me(authorization: Optional[str] = Header(None)):
+    user = get_current_user_optional(authorization)
+    if not user:
+        return {"authenticated": False}
+    return {
+        "authenticated": True,
+        "user": {
+            "username": user["username"],
+            "role": user["role"],
+            "api_status": user["api_status"]
+        }
+    }
+
+# --- Admin Dashboard Endpoints ---
+@app.get("/api/admin/users")
+async def admin_list_users(admin: dict = Depends(require_admin_user)):
+    return list_all_users()
+
+@app.post("/api/admin/users/status")
+async def admin_update_user_status(req: UserStatusUpdateRequest, admin: dict = Depends(require_admin_user), request: Request = None):
+    valid_statuses = ["pending", "approved", "blocked"]
+    if req.api_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"유효하지 않은 상태입니다: {valid_statuses}")
+    
+    target_user = get_user_by_username(req.username)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="해당 사용자를 찾을 수 없습니다.")
+
+    if target_user["role"] == "admin" and req.api_status != "approved":
+        raise HTTPException(status_code=400, detail="관리자 계정의 권한은 차단하거나 변경할 수 없습니다.")
+
+    ok = update_user_api_status(req.username, req.api_status)
+    if not ok:
+        raise HTTPException(status_code=500, detail="상태 업데이트에 실패했습니다.")
+
+    client_ip = get_client_ip(request) if request else "unknown"
+    record_usage_log(admin["username"], client_ip, "UPDATE_USER_STATUS", "SUCCESS", details=f"Changed {req.username} to {req.api_status}")
+
+    return {
+        "success": True,
+        "message": f"'{req.username}' 계정의 API 상태가 '{req.api_status}'(으)로 변경되었습니다.",
+        "username": req.username,
+        "api_status": req.api_status
+    }
+
+@app.get("/api/admin/stats")
+async def admin_get_stats(admin: dict = Depends(require_admin_user), request: Request = None):
+    client_ip = get_client_ip(request) if request else "unknown"
+    record_usage_log(admin["username"], client_ip, "DASHBOARD_VIEW", "SUCCESS", details="Admin viewed admin dashboard")
+
+    stats = get_security_and_usage_stats()
+
+    # Gemini API 연동 상태 및 일일 무료 쿼터 추정치
+    # Gemini 3.5 Flash / Flash Lite 무료 한도: 보통 하루 1,500 RPD (Requests Per Day) 및 1,000,000 TPM
+    daily_call_limit = 1500
+    daily_token_limit = 1000000
+
+    total_calls = stats["token_usage"]["total_calls"]
+    total_tokens = stats["token_usage"]["total_tokens"]
+    remaining_calls = max(0, daily_call_limit - total_calls)
+    remaining_tokens = max(0, daily_token_limit - total_tokens)
+
+    stats["gemini_monitoring"] = {
+        "api_key_status": GEMINI_KEY_STATUS,
+        "primary_model": GEMINI_MODEL,
+        "fallback_models": GEMINI_FALLBACK_MODELS,
+        "client_initialized": GEMINI_CLIENT is not None,
+        "daily_limit_calls": daily_call_limit,
+        "remaining_calls_est": remaining_calls,
+        "calls_usage_percent": round(min(100.0, (total_calls / daily_call_limit) * 100), 1),
+        "daily_limit_tokens": daily_token_limit,
+        "remaining_tokens_est": remaining_tokens,
+        "tokens_usage_percent": round(min(100.0, (total_tokens / daily_token_limit) * 100), 1),
+    }
+
+    return stats
+
+@app.get("/api/admin/logs/login")
+async def admin_get_login_logs(limit: int = 50, admin: dict = Depends(require_admin_user)):
+    return get_login_logs(limit=limit)
+
+@app.get("/api/admin/logs/usage")
+async def admin_get_usage_logs(limit: int = 50, admin: dict = Depends(require_admin_user)):
+    return get_usage_logs(limit=limit)
+
+# --- Standard DevOps & Server Endpoints ---
 @app.get("/api/status")
-async def get_server_status():
+async def get_server_status(authorization: Optional[str] = Header(None), request: Request = None):
+    user = get_current_user_optional(authorization)
+    client_ip = get_client_ip(request) if request else "unknown"
+    username = user["username"] if user else "guest"
+    record_usage_log(username, client_ip, "DASHBOARD_VIEW", "SUCCESS", details="Viewed infrastructure status")
+
     return {
         "container_id": server_state.container_id,
         "name": server_state.name,
@@ -237,9 +469,6 @@ async def inject_fault(req: ChaosRequest):
 
 # --- RAG (Retrieval-Augmented Generation) Helper ---
 def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
-    """
-    내부 저장된 jobs_and_trends.json 또는 news.json에서 쿼리와 가장 연관성 높은 아티클을 검색
-    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_files = [
         os.path.join(base_dir, "jobs_and_trends.json"),
@@ -262,7 +491,6 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
     if not articles:
         return []
 
-    # 쿼리에서 유의미한 키워드 추출 (2글자 이상)
     query_tokens = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]{2,}', query)]
     stopwords = {
         "어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변", "요령",
@@ -272,7 +500,6 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
     }
     keywords = [k for k in query_tokens if k not in stopwords]
 
-    # 키워드가 없거나, 질문 자체가 일상/날씨/단순 조언인 경우 RAG 기사 검색 스킵
     daily_weather_patterns = ["날씨", "기온", "비오", "맑", "미세먼지", "안녕", "반가", "하이", "모르겠", "막막", "방황", "어떤걸"]
     if any(p in query.lower() for p in daily_weather_patterns):
         return []
@@ -286,43 +513,31 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
         summary = item.get("summary", "") or item.get("raw_snippet", "")
         insight = item.get("interview_insight", "")
         tags = " ".join(item.get("keywords", []))
-        text = f"{title} {summary} {insight} {tags}".lower()
 
         score = 0
         matched_kws = 0
         for kw in keywords:
             kw_score = 0
             if kw in title.lower():
-                kw_score += 6  # 제목 매칭 가중치
+                kw_score += 6
             if kw in tags.lower():
-                kw_score += 4  # 태그 매칭 가중치
+                kw_score += 4
             if kw in insight.lower():
-                kw_score += 3  # 실무 인사이트 매칭
+                kw_score += 3
             if kw in summary.lower():
                 kw_score += 1
             if kw_score > 0:
                 matched_kws += 1
                 score += kw_score
 
-        # 최소 임계값: 핵심 키워드가 제목이나 태그에 직접 부합하거나 고득점인 경우만 인정 (유사도 7점 이상)
         if score >= 7 and matched_kws >= 1:
             scored_articles.append((score, item))
 
     scored_articles.sort(key=lambda x: x[0], reverse=True)
     return [item for _, item in scored_articles[:top_k]]
 
-# --- Anonymous Session & Chat History Store ---
-# In-memory session store (session_id -> dict of rooms)
-# session_store[session_id] = { room_id: { "title": str, "updated_at": str, "messages": list } }
+# --- Anonymous & Authenticated Session Store ---
 session_store: Dict[str, Dict[str, Dict]] = {}
-
-class ChatMessage(BaseModel):
-    id: Optional[str] = None
-    role: str  # user or model
-    content: str
-    model: Optional[str] = None
-    created_at: Optional[str] = None
-    referenced_articles: Optional[List[Dict]] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -338,9 +553,6 @@ class ChatResponse(BaseModel):
 
 class CreateRoomRequest(BaseModel):
     title: Optional[str] = "새 대화"
-
-class RenameRoomRequest(BaseModel):
-    title: str
 
 @app.get("/api/chats")
 async def list_chat_rooms(x_session_id: Optional[str] = Header(None)):
@@ -388,11 +600,50 @@ async def delete_chat_room(room_id: str, x_session_id: Optional[str] = Header(No
         return {"success": True, "message": "삭제되었습니다."}
     return {"success": False, "message": "방을 찾을 수 없습니다."}
 
+# --- Core Chat API with GEMINI API KEY Authorization & Token Tracking ---
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Header(None)):
+async def chat_with_mentor(
+    req: ChatRequest, 
+    request: Request,
+    x_session_id: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None)
+):
     user_msg = req.message.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="메시지를 입력해 주세요.")
+
+    client_ip = get_client_ip(request)
+    current_user = get_current_user_optional(authorization)
+    username = current_user["username"] if current_user else "anonymous"
+
+    # [권한 제어]: 오직 관리자(admin)이거나 승인된(approved) 계정만 백엔드의 GEMINI API KEY를 사용 가능
+    is_authorized = False
+    if current_user:
+        if current_user.get("role") == "admin" or current_user.get("api_status") == "approved":
+            is_authorized = True
+
+    if not is_authorized:
+        # 미승인, 차단, 또는 비로그인 상태
+        status_reason = "로그인이 필요합니다."
+        if current_user:
+            user_status = current_user.get("api_status", "pending")
+            if user_status == "pending":
+                status_reason = "관리자의 API 사용 승인(pending) 대기 중입니다. 관리자 승인 후 사용 가능합니다."
+            elif user_status == "blocked":
+                status_reason = "관리자에 의해 API 접근이 차단(blocked)된 계정입니다."
+
+        record_usage_log(
+            username=username,
+            ip=client_ip,
+            action="CHAT_API",
+            status="FORBIDDEN",
+            details=f"Access denied: {status_reason}"
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"⚠️ GEMINI API 키 사용 권한이 없습니다. {status_reason}"
+        )
 
     sid = x_session_id or "default-session"
     if sid not in session_store:
@@ -411,11 +662,10 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
             "messages": []
         }
     else:
-        # 첫 메시지인 경우 방 제목 업데이트
         if len(session_store[sid][room_id]["messages"]) == 0:
             session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
 
-    # 1. RAG: 시스템에 수집된 최신 IT 이슈 및 인사이트 검색 (Retrieval)
+    # 1. RAG 기사 검색
     retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
     rag_context_snippets = []
     referenced_meta = []
@@ -436,9 +686,12 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
             "insight": insight
         })
 
-    # 2. Gemini API 호출 또는 고품질 폴백 응답 생성 (Generation)
+    # 2. Gemini API 호출
     reply_text = ""
     model_name = ""
+    prompt_tokens = 0
+    completion_tokens = 0
+    total_tokens = 0
 
     if GEMINI_CLIENT:
         try:
@@ -454,7 +707,6 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                     "\n(위 최신 업계 동향 및 실무 인사이트를 답변에 자연스럽게 녹여내어 신뢰성을 높여주세요.)"
                 )
 
-            # 이전 대화 3개 포함
             prev_msgs = session_store[sid][room_id]["messages"][-4:]
             if prev_msgs:
                 history_str = "\n".join([f"{'지원자' if m['role']=='user' else '면접관'}: {m['content']}" for m in prev_msgs])
@@ -480,6 +732,12 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
                     if response and response.text:
                         used_model = m
                         reply_text = response.text
+                        
+                        # Usage metadata 추출
+                        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                            prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
+                            completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+                            total_tokens = getattr(response.usage_metadata, 'total_token_count', 0) or (prompt_tokens + completion_tokens)
                         break
                 except Exception as model_err:
                     print(f"Model {m} failed: {model_err}")
@@ -490,7 +748,7 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
             print(f"Gemini API 호출 에러: {e}")
 
     if not reply_text:
-        # 폴백 모드 (RAG 기사 정보 결합)
+        # 폴백 모드 (시니어 멘토 내장 엔진)
         low = user_msg.lower()
         rag_note = ""
         if referenced_meta:
@@ -524,84 +782,9 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
             reply_text = (
                 "☀️ **[선배의 일상 톡톡: 날씨 & 리프레시]**\n\n"
                 "오늘 날씨가 궁금하셨군요! 바쁜 개발 공부와 취업 준비 중에도 가끔 창밖을 보며 가벼운 산책과 환기를 해주는 게 번아웃을 막는 최고의 비결이랍니다. 😊\n\n"
-                "오늘 하루도 맑고 상쾌한 기운 받으셔서, 막히는 코드나 복잡한 알고리즘도 시원하게 술술 풀리길 응원할게요! 또 궁금하거나 이야기 나누고 싶은 게 생기면 언제든 편하게 말 걸어주세요."
+                "오늘 하루도 맑고 상쾌한 기운 받으셔서, 막히는 코드나 복잡한 알고리즘도 시원하게 술술 풀리길 응원할게요!"
             )
             model_name = "TechPrep AI Mentor (Daily Coach)"
-        elif any(k in low for k in ["llm", "rag", "생성형", "프롬프트", "에이전트", "agent"]):
-            reply_text = (
-                "🤖 **[시니어 면접관 코칭: LLM & RAG 실무 경험 어필 가이드]**\n\n"
-                "정말 트렌디하고 강력한 무기입니다! 면접관이 LLM/RAG 프로젝트를 볼 때 가장 관심 있게 보는 것은 '단순히 API를 호출해 봤는가'가 아니라, **'LLM의 한계(비용, 지연 시간, 환각)를 시스템 아키텍처로 어떻게 극복했는가'**입니다.\n\n"
-                "**1. 핵심 어필 포인트:**\n"
-                "- **환각(Hallucination) 방어**: BM25 키워드 검색과 Dense 벡터 임베딩을 결합한 하이브리드 검색 파이프라인 및 Re-ranking 모델 적용 경험을 설명하세요.\n"
-                "- **비용 & 레이턴시 최적화**: Redis Semantic Cache를 통한 반복 질의 응답 시간(Latency) 단축, 불필요한 토큰 비용 절감 사례를 수치와 함께 언급하세요.\n"
-                "- **데이터 청킹(Chunking) 전략**: 문서 분할 시 문맥 손실을 막기 위해 Recursive Character Splitting이나 메타데이터 태깅을 고민했던 엔지니어링 과정을 어필하세요.\n\n"
-                "**2. 단골 꼬리 질문(Follow-up):**\n"
-                "- *'벡터 DB(Pinecone, pgvector 등)를 선택할 때 어떤 트레이드오프(비용, 확장성, 인프라 운영 난이도)를 고려하셨나요?'*\n"
-                "- *'RAG 컨텍스트가 너무 길어져 LLM 윈도우를 초과하거나 비용이 낭비될 때 어떻게 제어하셨나요?'*"
-                + rag_note
-            )
-            model_name = "TechPrep AI Mentor (Built-in) + RAG" if rag_note else "TechPrep AI Mentor (Built-in)"
-        elif any(k in low for k in ["모르겠", "막막", "방황", "어떡"]) or ("무엇을" in low and "해야" in low) or ("어떤걸" in low and "해야" in low):
-            reply_text = (
-                "☕ **[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]**\n\n"
-                "아이고, 많이 막막하고 답답하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.\n\n"
-                "이럴 때는 너무 거창한 목표를 세우기보다 **작고 확실한 3단계**로 호흡을 가다듬는 게 가장 효과적이에요:\n\n"
-                "**1. 관심 도메인 하나 딱 정하기**\n"
-                "- 백엔드, 프론트엔드, DevOps/인프라, 데이터 등 모든 것을 다 잘할 수는 없습니다. 마음이 조금이라도 더 끌리는 메인 트랙 하나를 정해보세요.\n\n"
-                "**2. 작은 서비스 하나 끝까지 배포해 보기 (End-to-End)**\n"
-                "- 강의만 계속 듣는 '인강 완강 러너'에서 벗어나, 로그인부터 DB 연동, 클라우드 무료 배포(Render/Vercel)까지 작은 기능을 내 손으로 끝장내 보는 경험이 자신감을 되찾아 줍니다.\n\n"
-                "**3. 실패 노트(에러 로그) 작성하기**\n"
-                "- '오늘 겪은 에러와 내가 시도한 해결책 3줄'을 기록하는 습관만 들여도 면접관이 가장 좋아하는 훌륭한 포트폴리오가 됩니다.\n\n"
-                "지치지 말고 페이스 유지하세요! 구체적으로 어떤 기술이나 분야가 고민되는지 조금 더 편하게 털어놔 주시면 제가 함께 길을 찾아드릴게요. 💪"
-            )
-            model_name = "TechPrep AI Mentor (Career Coach)"
-        elif any(k in low for k in ["떨려", "긴장", "불안", "무서", "걱정", "심장"]):
-            reply_text = (
-                "🌿 **[시니어 면접관의 따뜻한 멘탈 케어: 면접 긴장 극복법]**\n\n"
-                "아이고, 면접이 코앞이라니 심장이 쿵쾅거리고 손에 땀이 나시죠! 그 마음, 정말 100% 이해합니다. 10년 차인 저도 중요한 기술 프레젠테이션이나 임원 미팅 전에는 여전히 긴장되거든요. 😊\n\n"
-                "면접관의 입장에서 꼭 전해드리고 싶은 **마음 안정 팁 3가지**를 드릴게요:\n\n"
-                "**1. 면접관은 '떨어뜨리려고' 앉아 있는 사람이 아닙니다**\n"
-                "- 면접관은 '이 사람과 같이 일하면 얼마나 즐겁고 든든할까?'를 기대하며 지원자의 장점을 찾으려고 애쓰고 있습니다. 시험관이 아니라 미래의 동료를 만나러 가는 티타임이라고 생각하세요.\n\n"
-                "**2. '모르겠습니다'는 감점 요인이 아닙니다**\n"
-                "- 모르는 질문을 받았을 때 억지로 꾸며내려 하면 긴장감이 배가 됩니다. '그 부분은 아직 깊이 다뤄보지 못했지만, 제가 아는 A 원리에 비추어 보면 이렇게 유추해 볼 수 있습니다'라고 솔직하고 논리적으로 풀어내면 면접관은 오히려 감탄합니다.\n\n"
-                "**3. 심호흡과 질문 곱씹기**\n"
-                "- 질문을 받자마자 1초 만에 대답할 필요가 전혀 없습니다. '좋은 질문 감사드립니다. 잠시 생각할 시간을 3초만 가져도 될까요?'라고 여유를 가지면 긴장감이 확 내려갑니다.\n\n"
-                "지금까지 치열하게 준비해 오신 것만으로도 이미 훌륭한 엔지니어입니다. 본인을 믿고 편안하게 이야기 나누고 오세요! 진심으로 합격을 응원합니다! 🍀"
-            )
-            model_name = "TechPrep AI Mentor (Mindset Coach)"
-        elif any(k in low for k in ["신입", "어필", "취업", "비전공", "포트폴리오", "진로", "커리어"]):
-            reply_text = (
-                "🌱 **[시니어 면접관이 전하는 신입 개발자 핵심 어필 포인트]**\n\n"
-                "정말 중요한 질문이에요! 많은 주니어분들이 면접관에게 '완벽한 아키텍처나 화려한 경력'을 보여줘야 한다고 오해하곤 합니다.\n\n"
-                "하지만 10년 차 면접관의 시선에서 솔직히 말씀드리면, 신입에게는 **'현재의 완성도'보다 '팀에 합류했을 때의 성장 잠재력'**이 합격을 결정짓습니다. 다음 **4가지 핵심 포인트**를 어필해 보세요:\n\n"
-                "**1. 탄탄한 CS 기본기와 원리에 대한 집요함**\n"
-                "- 프레임워크나 라이브러리를 단순히 가져다 쓰는 데 그치지 않고, '이것이 네트워크나 메모리/OS 단에서 왜 이렇게 동작하는지' 파고들어 본 경험을 강조하세요.\n\n"
-                "**2. 실패와 디버깅 스토리 (가장 강력한 무기)**\n"
-                "- 'A 기능을 구현했습니다'보다 'A 개발 중 난해한 에러를 만났을 때, 가설을 세우고 로그를 분석하여 근본 원인을 해결한 과정'이 면접관을 가장 설레게 만듭니다.\n\n"
-                "**3. 협업과 코드 품질에 대한 태도**\n"
-                "- Git 커밋 컨벤션, PR 코드 리뷰, 단위 테스트 작성 등 '팀의 일원으로서 동료를 배려하며 일할 준비가 되어 있는가'를 프로젝트 결과물로 증명하세요.\n\n"
-                "**4. 겸손하면서도 솔직한 학습 태도**\n"
-                "- 모르는 질문이 나왔을 때 아는 척 얼버무리지 않고, 자신이 아는 부분까지 논리적으로 설명하고 배움에 열려 있는 태도를 보여주는 것이 훨씬 높은 점수를 받습니다.\n\n"
-                "응원합니다! 자신감을 갖고 본인의 치열했던 문제 해결 과정을 보여주세요. 💪"
-            )
-            model_name = "TechPrep AI Mentor (Career Coach)"
-        elif any(k in low for k in ["트래픽", "캐시", "캐싱", "분산", "대규모"]):
-            reply_text = (
-                "💡 **[시니어 면접관 코칭: 대규모 트래픽 분산 & 캐싱 전략]**\n\n"
-                "대규모 트래픽과 캐싱 질문은 백엔드/인프라 면접에서 **시스템 안정성과 성능 최적화 역량**을 검증하는 단골 핵심 질문입니다.\n\n"
-                "**1. 핵심 답변 포인트:**\n"
-                "- **트래픽 분산 (L4/L7 계층)**: ALB를 통한 라운드로빈/최소 연결 분산과 Auto Scaling Group(HPA) 동적 증설을 설명합니다.\n"
-                "- **캐싱 전략 (Cache Aside vs Write Through)**: 읽기 위주 트래픽에는 Redis를 활용한 Look-Aside 패턴을 적용하고, 데이터 정합성을 위한 TTL 및 캐시 무효화(Cache Invalidation) 전략을 명확히 제시합니다.\n"
-                "- **장애 방어 (Cache Avalanche / Penetration)**: 캐시 만료 시각 지터링(Jitter) 분산, Bloom Filter 도입, 서킷 브레이커(Resilience4j)를 통한 DB 부하 격리를 강조하세요.\n\n"
-                "**2. 면접관의 단골 꼬리 질문(Follow-up):**\n"
-                "- *'Redis Cluster 다운 시 데이터 유실 방지와 대체 Failover 프로세스는 어떻게 설계하셨나요?'*\n"
-                "- *'Hot Key(특정 데이터에 트래픽 집중) 문제로 단일 Redis 샤드에 병목이 생겼을 때의 해결책은?'*"
-                + rag_note
-            )
-            model_name = "TechPrep AI Mentor (Built-in) + RAG" if rag_note else "TechPrep AI Mentor (Built-in)"
-        elif any(k in low for k in ["안녕", "반가", "하이", "hello"]):
-            reply_text = "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다. 어떤 기술 주제나 면접 고민이든 편하게 물어보세요!"
-            model_name = "TechPrep AI Mentor (Built-in)"
         else:
             reply_text = (
                 f"💡 **[시니어 면접관 코칭]**\n\n"
@@ -615,7 +798,26 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
             )
             model_name = "TechPrep AI Mentor (Built-in) + RAG"
 
-    # 3. 세션 히스토리에 저장
+    # 토큰 추정치 (API에서 토큰이 0으로 반환된 경우 글자 수 기반 추정 1token ≈ 3~4chars)
+    if total_tokens == 0:
+        prompt_tokens = max(1, len(user_msg) // 3)
+        completion_tokens = max(1, len(reply_text) // 3)
+        total_tokens = prompt_tokens + completion_tokens
+
+    # 성공 감사 로그 및 토큰 사용량 기록
+    record_usage_log(
+        username=username,
+        ip=client_ip,
+        action="CHAT_API",
+        status="SUCCESS",
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        model=model_name,
+        details=f"Chat response generated for room {room_id}"
+    )
+
+    # 히스토리 저장
     session_store[sid][room_id]["updated_at"] = now_iso
     session_store[sid][room_id]["messages"].append({
         "id": f"msg-{uuid.uuid4().hex[:6]}",
@@ -640,7 +842,7 @@ async def chat_with_mentor(req: ChatRequest, x_session_id: Optional[str] = Heade
         referenced_articles=referenced_meta
     )
 
-# --- Frontend Static Files Serving (포트 8080 통합 서빙) ---
+# --- Frontend Static Files Serving ---
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

@@ -72,8 +72,40 @@
                 </div>
             </div>
 
-            <!-- Pipeline Status & Refresh -->
-            <div class="flex items-center space-x-6 text-xs text-slate-500">
+            <!-- Pipeline Status, Auth & Admin Tab -->
+            <div class="flex items-center flex-wrap gap-3 text-xs text-slate-500">
+                <!-- User Auth Area -->
+                <div id="auth-nav-area" class="flex items-center gap-2">
+                    <!-- Guest View -->
+                    <div id="auth-guest-view" class="flex items-center gap-1.5">
+                        <button onclick="openAuthModal('login')" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-200 shadow-xs hover:border-indigo-400 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-right-to-bracket text-indigo-500"></i>
+                            <span>로그인</span>
+                        </button>
+                        <button onclick="openAuthModal('register')" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-plus text-xs"></i>
+                            <span>회원가입</span>
+                        </button>
+                    </div>
+
+                    <!-- Logged In View (Hidden by default) -->
+                    <div id="auth-logged-in-view" class="hidden flex items-center gap-2">
+                        <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                            <i class="fa-solid fa-circle-user text-indigo-600 text-sm"></i>
+                            <span id="nav-username" class="font-bold text-slate-800">사용자</span>
+                            <span id="nav-user-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200">pending</span>
+                        </div>
+                        <button id="btn-admin-dash" onclick="openAdminModal()" class="hidden px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold shadow-sm transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-amber-300"></i>
+                            <span>관리자 대시보드</span>
+                        </button>
+                        <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-semibold border border-slate-200 shadow-xs transition flex items-center gap-1" title="로그아웃">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pipeline Status & Refresh -->
                 <div class="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="text-slate-600">상태: <strong class="text-emerald-700 font-semibold">인사이트 파이프라인 가동 중</strong></span>
@@ -386,6 +418,483 @@
 
     <!-- Logic Script -->
     <script>
+
+        // ==================== Flexible API Base URL & Auth State ====================
+        const BACKEND_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? ''
+            : (window.location.hostname.includes('github.io') ? 'https://techprep-ai-vspr.onrender.com' : '');
+
+        let currentUser = null;
+        let authToken = localStorage.getItem('techprep_auth_token') || null;
+        let currentAuthMode = 'login'; // 'login' or 'register'
+
+        function getAuthHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            return headers;
+        }
+
+        async function verifyCurrentUser() {
+            if (!authToken) {
+                updateAuthUI(null);
+                return;
+            }
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/auth/me`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.authenticated) {
+                        currentUser = data.user;
+                        updateAuthUI(currentUser);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.log('Auth check error (running offline or backend cold start):', err);
+            }
+            // If failed to authenticate, clear invalid token
+            currentUser = null;
+            updateAuthUI(null);
+        }
+
+        function updateAuthUI(user) {
+            const guestView = document.getElementById('auth-guest-view');
+            const loggedInView = document.getElementById('auth-logged-in-view');
+            const navUsername = document.getElementById('nav-username');
+            const navUserBadge = document.getElementById('nav-user-badge');
+            const adminDashBtn = document.getElementById('btn-admin-dash');
+
+            if (user) {
+                guestView.classList.add('hidden');
+                loggedInView.classList.remove('hidden');
+                navUsername.textContent = user.username;
+
+                // Badge styling based on role & api_status
+                if (user.role === 'admin') {
+                    navUserBadge.textContent = 'Admin';
+                    navUserBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200';
+                    adminDashBtn.classList.remove('hidden');
+                } else if (user.api_status === 'approved') {
+                    navUserBadge.textContent = '승인완료';
+                    navUserBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200';
+                    adminDashBtn.classList.add('hidden');
+                } else if (user.api_status === 'blocked') {
+                    navUserBadge.textContent = '차단됨';
+                    navUserBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200';
+                    adminDashBtn.classList.add('hidden');
+                } else {
+                    navUserBadge.textContent = '승인대기';
+                    navUserBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200';
+                    adminDashBtn.classList.add('hidden');
+                }
+            } else {
+                guestView.classList.remove('hidden');
+                loggedInView.classList.add('hidden');
+                adminDashBtn.classList.add('hidden');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('techprep_auth_token');
+            authToken = null;
+            currentUser = null;
+            updateAuthUI(null);
+            showAuthAlert('auth-success', '성공적으로 로그아웃되었습니다.');
+            openAuthModal('login');
+        }
+
+        // ==================== Auth Modal Handlers ====================
+        function openAuthModal(mode = 'login') {
+            currentAuthMode = mode;
+            const modal = document.getElementById('auth-modal');
+            const modalTitle = document.getElementById('auth-modal-title');
+            const modalIcon = document.getElementById('auth-modal-icon');
+            const submitText = document.getElementById('auth-submit-text');
+            const togglePrompt = document.getElementById('auth-toggle-prompt');
+            const toggleBtn = document.getElementById('auth-toggle-btn');
+            const pendingNotice = document.getElementById('auth-pending-notice');
+
+            hideAuthAlerts();
+            document.getElementById('auth-username').value = '';
+            document.getElementById('auth-password').value = '';
+
+            if (mode === 'register') {
+                modalTitle.textContent = '회원가입';
+                modalIcon.className = 'fa-solid fa-user-plus text-white';
+                submitText.textContent = '회원가입 완료';
+                togglePrompt.textContent = '이미 계정이 있으신가요?';
+                toggleBtn.textContent = '로그인하기';
+                pendingNotice.classList.remove('hidden');
+            } else {
+                modalTitle.textContent = '로그인';
+                modalIcon.className = 'fa-solid fa-lock text-white';
+                submitText.textContent = '로그인하기';
+                togglePrompt.textContent = '아직 계정이 없으신가요?';
+                toggleBtn.textContent = '회원가입하기';
+                pendingNotice.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('auth-username').focus(), 100);
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            hideAuthAlerts();
+        }
+
+        function toggleAuthMode() {
+            openAuthModal(currentAuthMode === 'login' ? 'register' : 'login');
+        }
+
+        function showAuthAlert(type, message) {
+            const errAlert = document.getElementById('auth-error-alert');
+            const succAlert = document.getElementById('auth-success-alert');
+            if (type === 'auth-error') {
+                document.getElementById('auth-error-text').textContent = message;
+                errAlert.classList.remove('hidden');
+                succAlert.classList.add('hidden');
+            } else {
+                document.getElementById('auth-success-text').textContent = message;
+                succAlert.classList.remove('hidden');
+                errAlert.classList.add('hidden');
+            }
+        }
+
+        function hideAuthAlerts() {
+            document.getElementById('auth-error-alert').classList.add('hidden');
+            document.getElementById('auth-success-alert').classList.add('hidden');
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const submitBtn = document.getElementById('auth-submit-btn');
+
+            if (!username || !password) return;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 처리 중...';
+            hideAuthAlerts();
+
+            const endpoint = currentAuthMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('techprep_auth_token', authToken);
+                    currentUser = data.user;
+                    updateAuthUI(currentUser);
+
+                    if (currentAuthMode === 'register') {
+                        showAuthAlert('auth-success', '가입 성공! 현재 승인 대기(pending) 상태입니다.');
+                        setTimeout(() => closeAuthModal(), 1500);
+                    } else {
+                        showAuthAlert('auth-success', `환영합니다, ${currentUser.username}님!`);
+                        setTimeout(() => closeAuthModal(), 800);
+                    }
+                } else {
+                    showAuthAlert('auth-error', data.detail || '인증에 실패했습니다. 다시 확인해 주세요.');
+                }
+            } catch (err) {
+                console.error('Auth request error:', err);
+                showAuthAlert('auth-error', '백엔드 서버와 통신할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>${currentAuthMode === 'register' ? '회원가입 완료' : '로그인하기'}</span>`;
+            }
+        }
+
+        // ==================== Admin Dashboard Handlers ====================
+        function openAdminModal() {
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('관리자만 접근할 수 있습니다.');
+                return;
+            }
+            document.getElementById('admin-modal').classList.remove('hidden');
+            loadAdminStats();
+            loadAdminUsers();
+            loadAdminLogs();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
+        }
+
+        let currentAuditTab = 'login';
+        function switchAuditTab(tab) {
+            currentAuditTab = tab;
+            const btnLogin = document.getElementById('tab-btn-login');
+            const btnUsage = document.getElementById('tab-btn-usage');
+            const viewLogin = document.getElementById('adm-login-logs-view');
+            const viewUsage = document.getElementById('adm-usage-logs-view');
+
+            if (tab === 'login') {
+                btnLogin.className = 'px-3 py-1 rounded-lg bg-white text-indigo-600 shadow-xs transition';
+                btnUsage.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+                viewLogin.classList.remove('hidden');
+                viewUsage.classList.add('hidden');
+            } else {
+                btnUsage.className = 'px-3 py-1 rounded-lg bg-white text-indigo-600 shadow-xs transition';
+                btnLogin.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+                viewUsage.classList.remove('hidden');
+                viewLogin.classList.add('hidden');
+            }
+        }
+
+        async function loadAdminStats() {
+            const refreshIcon = document.getElementById('admin-refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/stats`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderAdminStats(data);
+                }
+            } catch (err) {
+                console.error('Failed to load admin stats:', err);
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+            }
+        }
+
+        function renderAdminStats(data) {
+            const g = data.gemini_monitoring || {};
+            const t = data.token_usage || {};
+            const o = data.overview || {};
+
+            // 1. Key Status
+            const keyElem = document.getElementById('adm-kpi-key-status');
+            if (g.api_key_status === 'ACTIVE') {
+                keyElem.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> ACTIVE (정상)`;
+                keyElem.className = 'text-xl font-extrabold text-emerald-600 mt-2 flex items-center gap-1.5';
+            } else {
+                keyElem.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> ${g.api_key_status || 'UNCONFIGURED'}`;
+                keyElem.className = 'text-xl font-extrabold text-rose-600 mt-2 flex items-center gap-1.5';
+            }
+            document.getElementById('adm-kpi-model-name').textContent = g.primary_model || 'Gemini 3.5 Flash';
+
+            // 2. Calls & Tokens
+            document.getElementById('adm-kpi-total-calls').textContent = `${(t.total_calls || 0).toLocaleString()}회`;
+            document.getElementById('adm-kpi-calls-percent').textContent = `${g.calls_usage_percent || 0}%`;
+
+            document.getElementById('adm-kpi-total-tokens').textContent = (t.total_tokens || 0).toLocaleString();
+            document.getElementById('adm-kpi-prompt-tokens').textContent = (t.prompt_tokens || 0).toLocaleString();
+            document.getElementById('adm-kpi-comp-tokens').textContent = (t.completion_tokens || 0).toLocaleString();
+
+            document.getElementById('adm-kpi-total-users').textContent = o.total_users || 0;
+            document.getElementById('adm-kpi-total-logins').textContent = o.total_logins || 0;
+
+            // 3. Progress bars
+            const callsPct = Math.min(100, g.calls_usage_percent || 0);
+            document.getElementById('adm-calls-bar').style.width = `${callsPct}%`;
+            document.getElementById('adm-calls-ratio').textContent = `${(t.total_calls || 0).toLocaleString()} / ${(g.daily_limit_calls || 1500).toLocaleString()}`;
+            document.getElementById('adm-calls-rem').textContent = `잔여: ${(g.remaining_calls_est || 1500).toLocaleString()}회`;
+
+            const tokensPct = Math.min(100, g.tokens_usage_percent || 0);
+            document.getElementById('adm-tokens-bar').style.width = `${tokensPct}%`;
+            document.getElementById('adm-tokens-ratio').textContent = `${(t.total_tokens || 0).toLocaleString()} / ${(g.daily_limit_tokens || 1000000).toLocaleString()}`;
+            document.getElementById('adm-tokens-rem').textContent = `잔여: ${(g.remaining_tokens_est || 1000000).toLocaleString()} 토큰`;
+
+            // User stats summary table update
+            if (data.user_stats) {
+                renderUserStatsTable(data.user_stats);
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/stats`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderUserStatsTable(data.user_stats || []);
+                }
+            } catch (err) {
+                console.error('Failed to load admin user list:', err);
+            }
+        }
+
+        function renderUserStatsTable(users) {
+            const tbody = document.getElementById('adm-users-table-body');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400">등록된 회원이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                let statusBadge = '';
+                if (u.api_status === 'approved') {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">허용 (approved)</span>';
+                } else if (u.api_status === 'blocked') {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold border border-rose-200">차단 (blocked)</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold border border-amber-200">대기 (pending)</span>';
+                }
+
+                const isAdmin = u.role === 'admin';
+                const actionButtons = isAdmin 
+                    ? '<span class="text-[11px] text-slate-400 font-semibold italic">관리자 계정보호</span>'
+                    : `
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button onclick="changeUserStatus('${u.username}', 'approved')" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 transition ${u.api_status === 'approved' ? 'opacity-40 pointer-events-none' : ''}">
+                                <i class="fa-solid fa-check text-[10px]"></i> 허용
+                            </button>
+                            <button onclick="changeUserStatus('${u.username}', 'blocked')" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 transition ${u.api_status === 'blocked' ? 'opacity-40 pointer-events-none' : ''}">
+                                <i class="fa-solid fa-ban text-[10px]"></i> 차단
+                            </button>
+                        </div>
+                    `;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3 px-4 font-bold text-slate-900 flex items-center gap-1.5">
+                            <i class="fa-solid ${isAdmin ? 'fa-crown text-amber-500' : 'fa-user text-slate-400'}"></i>
+                            ${u.username}
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-600">${u.role}</td>
+                        <td class="py-3 px-4">${statusBadge}</td>
+                        <td class="py-3 px-4 text-center font-medium">
+                            <span class="text-emerald-600 font-bold">${u.login_success_count || 0}</span> / 
+                            <span class="text-rose-500 font-bold">${u.login_failed_count || 0}</span>
+                        </td>
+                        <td class="py-3 px-4 text-center font-semibold text-slate-700">${u.dashboard_views || 0}회</td>
+                        <td class="py-3 px-4 text-center font-medium">
+                            <span class="text-indigo-600 font-bold">${u.chat_calls || 0}회</span> / 
+                            <span class="text-rose-600 font-bold">${u.forbidden_calls || 0}회</span>
+                        </td>
+                        <td class="py-3 px-4 text-center font-bold text-purple-700">${(u.total_tokens_used || 0).toLocaleString()}</td>
+                        <td class="py-3 px-4 text-right">${actionButtons}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function changeUserStatus(username, newStatus) {
+            if (!confirm(`'${username}' 계정의 API 접근 권한을 '${newStatus}'(으)로 변경하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/users/status`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ username, api_status: newStatus })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || '상태가 변경되었습니다.');
+                    loadAdminStats();
+                } else {
+                    alert(data.detail || '상태 변경에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error('Error changing user status:', err);
+                alert('요청 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function loadAdminLogs() {
+            // Load Login Logs
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/login?limit=40`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const logs = await res.json();
+                    renderLoginLogs(logs);
+                }
+            } catch (err) {
+                console.error('Failed to load login logs:', err);
+            }
+
+            // Load Usage Logs
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/usage?limit=40`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const logs = await res.json();
+                    renderUsageLogs(logs);
+                }
+            } catch (err) {
+                console.error('Failed to load usage logs:', err);
+            }
+        }
+
+        function renderLoginLogs(logs) {
+            const tbody = document.getElementById('adm-login-logs-body');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">기록된 로그인 시도 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => {
+                const isSuccess = l.status === 'SUCCESS';
+                const statusBadge = isSuccess 
+                    ? '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">성공</span>'
+                    : '<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold">실패</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50/70 transition">
+                        <td class="py-2 px-4 text-slate-500 font-mono text-[11px]">${l.timestamp}</td>
+                        <td class="py-2 px-4 font-bold text-slate-800">${l.username}</td>
+                        <td class="py-2 px-4 text-slate-600 font-mono text-[11px]">${l.ip_address || '-'}</td>
+                        <td class="py-2 px-4">${statusBadge}</td>
+                        <td class="py-2 px-4 text-slate-500">${l.failure_reason || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderUsageLogs(logs) {
+            const tbody = document.getElementById('adm-usage-logs-body');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">기록된 사용 이력 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => {
+                let statusBadge = '';
+                if (l.status === 'SUCCESS') {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">SUCCESS</span>';
+                } else if (l.status === 'FORBIDDEN') {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold">403 FORBIDDEN</span>';
+                } else {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold">${l.status}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50/70 transition">
+                        <td class="py-2 px-4 text-slate-500 font-mono text-[11px]">${l.timestamp}</td>
+                        <td class="py-2 px-4 font-bold text-slate-800">${l.username}</td>
+                        <td class="py-2 px-4 font-semibold text-indigo-700">${l.action}</td>
+                        <td class="py-2 px-4">${statusBadge}</td>
+                        <td class="py-2 px-4 text-right font-mono text-slate-600 font-medium">
+                            ${l.prompt_tokens} / ${l.completion_tokens} / <strong class="text-purple-700">${l.total_tokens}</strong>
+                        </td>
+                        <td class="py-2 px-4 text-slate-500 truncate max-w-xs" title="${l.details || ''}">${l.details || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
         let allArticles = [];
         let searchQuery = '';
         let currentPage = 1;
@@ -1023,23 +1532,45 @@
 
                 // 1. Render 또는 로컬 백엔드 호출 시도 (RAG & Session 헤더 포함)
                 try {
-                    const response = await fetch('/api/chat', {
+                    const chatHeaders = { 
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    };
+                    if (authToken) {
+                        chatHeaders['Authorization'] = `Bearer ${authToken}`;
+                    }
+
+                    const response = await fetch(`${BACKEND_BASE_URL}/api/chat`, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'X-Session-ID': sessionId
-                        },
+                        headers: chatHeaders,
                         body: JSON.stringify({ 
                             message, 
                             room_id: activeRoomId 
                         }),
-                        signal: AbortSignal.timeout(4500)
+                        signal: AbortSignal.timeout(6000)
                     });
+
                     if (response.ok) {
                         const data = await response.json();
                         reply = data.reply;
                         model = data.model;
                         references = data.referenced_articles;
+                    } else if (response.status === 403) {
+                        // 권한 없음 에러 처리: pending 또는 blocked 또는 미로그인
+                        const errData = await response.json().catch(() => ({}));
+                        const errMsg = errData.detail || '⚠️ GEMINI API 키 사용 권한이 없습니다. 관리자 승인이 필요합니다.';
+                        removeLoadingSkeleton(loadingId);
+                        appendChatMessage('model', `${errMsg}\n\n*(상단 로그인 버튼을 통해 로그인하거나 관리자에게 API 키 사용 승인을 요청해 주세요.)*`, '권한 제어 엔진 (Security Policy)');
+                        if (currentRoom) {
+                            currentRoom.messages.push({ 
+                                role: 'model', 
+                                content: errMsg, 
+                                model: '권한 제어 엔진', 
+                                timestamp: Date.now() 
+                            });
+                            saveChatRooms();
+                        }
+                        return;
                     }
                 } catch (netErr) {
                     console.log('Backend /api/chat unreachable. Running Client-side RAG Engine.');
@@ -1335,8 +1866,284 @@
 
         // 페이지 로드 시 채팅 세션 초기화
         document.addEventListener('DOMContentLoaded', () => {
+            verifyCurrentUser();
             initChatSession();
         });
     </script>
+
+    <!-- ==================== Auth Modal (Login / Register) ==================== -->
+    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl border border-indigo-100 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
+                        <i id="auth-modal-icon" class="fa-solid fa-lock text-white"></i>
+                    </div>
+                    <div>
+                        <h3 id="auth-modal-title" class="font-extrabold text-lg">로그인</h3>
+                        <p id="auth-modal-subtitle" class="text-xs text-indigo-100">TechPrep-AI 시니어 멘토링 서비스</p>
+                    </div>
+                </div>
+                <button onclick="closeAuthModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div id="auth-error-alert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation shrink-0 text-sm"></i>
+                    <span id="auth-error-text">오류가 발생했습니다.</span>
+                </div>
+                <div id="auth-success-alert" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check shrink-0 text-sm"></i>
+                    <span id="auth-success-text">성공적으로 처리되었습니다.</span>
+                </div>
+
+                <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">아이디</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-user text-xs"></i>
+                            </span>
+                            <input type="text" id="auth-username" required minlength="3" placeholder="아이디 입력 (최소 3자)"
+                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-key text-xs"></i>
+                            </span>
+                            <input type="password" id="auth-password" required minlength="4" placeholder="비밀번호 입력 (최소 4자)"
+                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                    </div>
+
+                    <div id="auth-pending-notice" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+                        <i class="fa-solid fa-info-circle mr-1"></i> 일반 회원가입 시 <strong>승인 대기(pending)</strong> 상태로 생성되며, 관리자가 승인한 후 GEMINI API 챗봇을 호출할 수 있습니다.
+                    </div>
+
+                    <button type="submit" id="auth-submit-btn" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+                        <span id="auth-submit-text">로그인하기</span>
+                    </button>
+                </form>
+
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span id="auth-toggle-prompt">아직 계정이 없으신가요?</span>
+                    <button type="button" onclick="toggleAuthMode()" id="auth-toggle-btn" class="font-bold text-indigo-600 hover:text-indigo-800 underline">
+                        회원가입하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== Admin Dashboard Modal ==================== -->
+    <div id="admin-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-xs transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300">
+                        <i class="fa-solid fa-gauge-high text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-base md:text-lg font-black tracking-tight text-white">TechPrep-AI 보안 및 관리자 관제탑</h2>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/30 text-purple-200 border border-purple-400/30 uppercase tracking-wider">Admin Only</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-0.5">회원 API 키 권한 제어, 감사 로그(Audit Logs) 및 Gemini 토큰 사용량 실시간 관제</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="loadAdminStats()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/20">
+                        <i id="admin-refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i>
+                        <span>지표 갱신</span>
+                    </button>
+                    <button onclick="closeAdminModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1 bg-slate-50/60">
+                <!-- 1. Top KPI Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                            <span>GEMINI API 연동 상태</span>
+                            <i class="fa-solid fa-key text-indigo-500"></i>
+                        </div>
+                        <div class="text-xl font-extrabold text-emerald-600 mt-2 flex items-center gap-1.5" id="adm-kpi-key-status">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            ACTIVE
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1" id="adm-kpi-model-name">gemini-3.5-flash-lite</div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                            <span>누적 API 호출 횟수</span>
+                            <i class="fa-solid fa-paper-plane text-purple-500"></i>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mt-1" id="adm-kpi-total-calls">0회</div>
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            일일 무료 한도(1,500회) 대비 <strong id="adm-kpi-calls-percent" class="text-indigo-600">0%</strong>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                            <span>누적 토큰 사용량</span>
+                            <i class="fa-solid fa-microchip text-pink-500"></i>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mt-1" id="adm-kpi-total-tokens">0</div>
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            입력: <span id="adm-kpi-prompt-tokens" class="font-semibold">0</span> | 출력: <span id="adm-kpi-comp-tokens" class="font-semibold">0</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                            <span>총 회원수 / 로그인 성공</span>
+                            <i class="fa-solid fa-users text-sky-500"></i>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 mt-1">
+                            <span id="adm-kpi-total-users">0</span>명 / <span id="adm-kpi-total-logins" class="text-sky-600">0</span>회
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">가입자 및 감사 추적 활성</div>
+                    </div>
+                </div>
+
+                <!-- 2. Quota Progress Bars -->
+                <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-battery-half text-indigo-600"></i>
+                            Gemini 일일 무료 한도 소진율 (Free Tier Quota Tracking)
+                        </span>
+                        <span class="text-slate-400 text-[11px]">무료 티어 기준: 1,500 RPD / 1,000,000 TPM</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1 font-semibold text-slate-600">
+                                <span>일일 호출 횟수 (Calls): <span id="adm-calls-ratio">0 / 1500</span></span>
+                                <span id="adm-calls-rem" class="text-indigo-600 font-bold">잔여: 1500회</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                <div id="adm-calls-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1 font-semibold text-slate-600">
+                                <span>일일 토큰 사용량 (Tokens): <span id="adm-tokens-ratio">0 / 1,000,000</span></span>
+                                <span id="adm-tokens-rem" class="text-purple-600 font-bold">잔여: 1,000,000 토큰</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                <div id="adm-tokens-bar" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. User Management & Permission Control Section -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-users-gear text-indigo-600"></i>
+                                <span>가입 회원 관리 & GEMINI API KEY 사용 권한 제어</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">승인(approved)된 계정만 백엔드 GEMINI_API_KEY를 호출할 수 있으며, pending 또는 blocked 계정은 403 차단됩니다.</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-200">
+                                    <th class="py-3 px-4">사용자명</th>
+                                    <th class="py-3 px-4">역할(Role)</th>
+                                    <th class="py-3 px-4">API 권한 상태</th>
+                                    <th class="py-3 px-4 text-center">로그인 (성공/실패)</th>
+                                    <th class="py-3 px-4 text-center">대시보드 조회</th>
+                                    <th class="py-3 px-4 text-center">API 호출 (성공/차단)</th>
+                                    <th class="py-3 px-4 text-center">누적 토큰</th>
+                                    <th class="py-3 px-4 text-right">권한 변경 제어</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-users-table-body" class="divide-y divide-slate-100 text-slate-700">
+                                <tr>
+                                    <td colspan="8" class="text-center py-6 text-slate-400">데이터를 불러오는 중입니다...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. Security & Audit Logs Section (Tabs: Login Logs / Usage Logs) -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center gap-3">
+                            <span class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+                                보안 및 감사 로그 (Audit Logs)
+                            </span>
+                            <div class="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-xl text-[11px] font-semibold">
+                                <button onclick="switchAuditTab('login')" id="tab-btn-login" class="px-3 py-1 rounded-lg bg-white text-indigo-600 shadow-xs transition">로그인 시도 로그</button>
+                                <button onclick="switchAuditTab('usage')" id="tab-btn-usage" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">API / 조회 사용 로그</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Login Logs Table -->
+                    <div id="adm-login-logs-view" class="overflow-x-auto max-h-72 custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold">
+                                <tr>
+                                    <th class="py-2.5 px-4">시각</th>
+                                    <th class="py-2.5 px-4">계정명</th>
+                                    <th class="py-2.5 px-4">접속 IP</th>
+                                    <th class="py-2.5 px-4">성공/실패 여부</th>
+                                    <th class="py-2.5 px-4">비고 (실패 원인)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-login-logs-body" class="divide-y divide-slate-100">
+                                <tr><td colspan="5" class="text-center py-4 text-slate-400">로그인 로그를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Usage Logs Table -->
+                    <div id="adm-usage-logs-view" class="hidden overflow-x-auto max-h-72 custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="sticky top-0 bg-slate-100 text-slate-600 font-bold">
+                                <tr>
+                                    <th class="py-2.5 px-4">시각</th>
+                                    <th class="py-2.5 px-4">계정명</th>
+                                    <th class="py-2.5 px-4">작업(Action)</th>
+                                    <th class="py-2.5 px-4">상태</th>
+                                    <th class="py-2.5 px-4 text-right">토큰(Prompt / Output / Total)</th>
+                                    <th class="py-2.5 px-4">상세 내역</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adm-usage-logs-body" class="divide-y divide-slate-100">
+                                <tr><td colspan="6" class="text-center py-4 text-slate-400">사용 로그를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

@@ -24,3 +24,8 @@ miniconda3/
 Thumbs.db
 .vscode/
 .idea/
+
+# Database
+*.db
+*.sqlite3
+data/*.db
