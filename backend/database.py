@@ -148,6 +148,7 @@ def init_db():
     if use_pg:
         init_pg_pool()
 
+    # 1. Base Table Creation
     with get_db_cursor() as cursor:
         if use_pg:
             print("🔌 Connected to External PostgreSQL database (Persistent across restarts).")
@@ -234,35 +235,70 @@ def init_db():
             )
             """)
 
-        # Schema migrations for existing tables (failed_login_attempts, block_reason)
+    # 2. Schema Migrations (Independent safe transaction with pre-checks)
+    # 기존 users 테이블에 failed_login_attempts 및 block_reason 컬럼이 누락되어 있을 경우에만 안전하게 추가
+    existing_cols = []
+    try:
+        with get_db_cursor() as cursor:
+            if use_pg:
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users'
+                """)
+                rows = cursor.fetchall()
+                existing_cols = [r["column_name"].lower() for r in rows]
+            else:
+                cursor.execute("PRAGMA table_info(users)")
+                rows = cursor.fetchall()
+                existing_cols = [r[1].lower() for r in rows]
+    except Exception as e:
+        print(f"⚠️ Failed to inspect existing users columns: {e}")
+
+    if "failed_login_attempts" not in existing_cols:
         try:
-            cursor.execute("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0")
-        except Exception:
-            pass
+            with get_db_cursor() as cursor:
+                cursor.execute("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0")
+                print("✅ Added column 'failed_login_attempts' to users table.")
+        except Exception as e:
+            print(f"⚠️ Note: ALTER TABLE users ADD COLUMN failed_login_attempts failed or already exists: {e}")
+
+    if "block_reason" not in existing_cols:
         try:
-            cursor.execute("ALTER TABLE users ADD COLUMN block_reason TEXT")
-        except Exception:
-            pass
+            with get_db_cursor() as cursor:
+                cursor.execute("ALTER TABLE users ADD COLUMN block_reason TEXT")
+                print("✅ Added column 'block_reason' to users table.")
+        except Exception as e:
+            print(f"⚠️ Note: ALTER TABLE users ADD COLUMN block_reason failed or already exists: {e}")
 
-        # Seed Admin User if not exists
-        admin_user = os.environ.get("ADMIN_USERNAME", "admin").strip()
-        admin_pass = os.environ.get("ADMIN_PASSWORD", "admin1234").strip()
+    # 3. Seed Admin User in a fresh, isolated transaction
+    admin_user = os.environ.get("ADMIN_USERNAME", "admin").strip()
+    admin_pass = os.environ.get("ADMIN_PASSWORD", "admin1234").strip()
+    ph = "%s" if use_pg else "?"
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-        ph = "%s" if use_pg else "?"
-        cursor.execute(f"SELECT id, role, api_status FROM users WHERE username = {ph}", (admin_user,))
-        row = cursor.fetchone()
-        now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(f"SELECT id, role, api_status FROM users WHERE username = {ph}", (admin_user,))
+            row = cursor.fetchone()
 
-        if not row:
-            pw_hash = hash_password(admin_pass)
-            cursor.execute(
-                f"INSERT INTO users (username, password_hash, role, api_status, created_at, updated_at) VALUES ({ph}, {ph}, 'admin', 'approved', {ph}, {ph})",
-                (admin_user, pw_hash, now_iso, now_iso)
-            )
-            print(f"✅ Initial Admin user '{admin_user}' seeded successfully with role='admin' & api_status='approved'.")
-        else:
-            if row["role"] != "admin" or row["api_status"] != "approved":
-                cursor.execute(f"UPDATE users SET role = 'admin', api_status = 'approved', updated_at = {ph} WHERE username = {ph}", (now_iso, admin_user))
+            if not row:
+                pw_hash = hash_password(admin_pass)
+                cursor.execute(
+                    f"INSERT INTO users (username, password_hash, role, api_status, created_at, updated_at) VALUES ({ph}, {ph}, 'admin', 'approved', {ph}, {ph})",
+                    (admin_user, pw_hash, now_iso, now_iso)
+                )
+                print(f"✅ Initial Admin user '{admin_user}' seeded successfully with role='admin' & api_status='approved'.")
+            else:
+                if row["role"] != "admin" or row["api_status"] != "approved":
+                    cursor.execute(
+                        f"UPDATE users SET role = 'admin', api_status = 'approved', updated_at = {ph} WHERE username = {ph}",
+                        (now_iso, admin_user)
+                    )
+                    print(f"✅ Existing admin '{admin_user}' role and status confirmed.")
+    except Exception as e:
+        print(f"❌ Failed to seed or verify admin user '{admin_user}': {e}")
+        raise e
 
 # DB Query Helpers
 def get_user_by_username(username: str) -> Optional[dict]:
