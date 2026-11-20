@@ -122,8 +122,37 @@
         </div>
     </header>
 
+    <!-- Guest Locked Gate Hero Banner (Shown when not logged in) -->
+    <div id="guest-gate-banner" class="max-w-4xl mx-auto px-6 py-12 text-center flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+        <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 text-white text-2xl">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+        <div class="space-y-2">
+            <span class="text-xs uppercase tracking-wider font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
+                Member Authentication Required
+            </span>
+            <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                TechPrep-AI 실시간 트렌드 & 실무 인사이트 관제탑
+            </h2>
+            <p class="text-xs md:text-sm text-slate-500 max-w-lg mx-auto">
+                본 플랫폼은 최신 클라우드, 인프라/DevOps, 보안, AI/ML 실무 인사이트 및 RAG 시니어 면접관 멘토링을 제공합니다. 서비스를 이용하시려면 로그인이 필요합니다.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="openAuthModal('login')" class="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 hover:shadow-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>로그인하고 관제탑 접속하기</span>
+            </button>
+            <button onclick="openAuthModal('register')" class="px-5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs hover:border-indigo-300 transition flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-indigo-600"></i>
+                <span>신규 회원가입</span>
+            </button>
+        </div>
+    </div>
+
+
     <!-- Main Container -->
-    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+    <main id="main-content-area" class="hidden max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8 animate-in fade-in duration-300">
 
         <!-- Top Banner: Bright & Engaging Gradient -->
         <section class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-6 rounded-3xl text-white shadow-xl shadow-indigo-500/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
@@ -271,7 +300,7 @@
     </footer>
 
     <!-- Floating AI Tech Mentor Chatbot Button & Panel -->
-    <div class="fixed bottom-6 right-6 z-50">
+    <div id="chat-widget-wrapper" class="hidden fixed bottom-6 right-6 z-50">
         <!-- Floating Toggle Button -->
         <button 
             id="chat-toggle-btn"
@@ -468,10 +497,21 @@
             const navUserBadge = document.getElementById('nav-user-badge');
             const adminDashBtn = document.getElementById('btn-admin-dash');
 
+            const mainContentArea = document.getElementById('main-content-area');
+            const guestGateBanner = document.getElementById('guest-gate-banner');
+            const chatWidgetWrapper = document.getElementById('chat-widget-wrapper');
+            const modalCloseBtn = document.getElementById('auth-modal-close-btn');
+
             if (user) {
+                // 1. 로그인 상태: 메인 기사 영역 및 챗봇 위젯 활성화
                 guestView.classList.add('hidden');
                 loggedInView.classList.remove('hidden');
                 navUsername.textContent = user.username;
+
+                if (guestGateBanner) guestGateBanner.classList.add('hidden');
+                if (mainContentArea) mainContentArea.classList.remove('hidden');
+                if (chatWidgetWrapper) chatWidgetWrapper.classList.remove('hidden');
+                if (modalCloseBtn) modalCloseBtn.classList.remove('hidden');
 
                 // Badge styling based on role & api_status
                 if (user.role === 'admin') {
@@ -491,10 +531,24 @@
                     navUserBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200';
                     adminDashBtn.classList.add('hidden');
                 }
+
+                // 기사 데이터가 아직 로드되지 않았다면 로드
+                if (!allArticles || allArticles.length === 0) {
+                    loadPrepData();
+                }
             } else {
+                // 2. 비로그인 상태: 메인 기사 및 챗봇 위젯 잠금, 로그인 게이트 활성화
                 guestView.classList.remove('hidden');
                 loggedInView.classList.add('hidden');
                 adminDashBtn.classList.add('hidden');
+
+                if (mainContentArea) mainContentArea.classList.add('hidden');
+                if (chatWidgetWrapper) chatWidgetWrapper.classList.add('hidden');
+                if (guestGateBanner) guestGateBanner.classList.remove('hidden');
+                if (modalCloseBtn) modalCloseBtn.classList.add('hidden');
+
+                // 로그인 모달 자동으로 오픈
+                openAuthModal('login');
             }
         }
 
@@ -543,6 +597,10 @@
         }
 
         function closeAuthModal() {
+            // 비로그인 상태일 때는 모달 닫기 방지 (로그인 게이트 유지)
+            if (!currentUser) {
+                return;
+            }
             document.getElementById('auth-modal').classList.add('hidden');
             hideAuthAlerts();
         }
@@ -1254,7 +1312,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadPrepData);
+        // loadPrepData will be invoked once the user is authenticated in updateAuthUI
 
         // --- Anonymous Session & Chat History Management ---
         const SESSION_STORAGE_KEY = 'techprep_session_id';
@@ -1885,7 +1943,7 @@
                         <p id="auth-modal-subtitle" class="text-xs text-indigo-100">TechPrep-AI 시니어 멘토링 서비스</p>
                     </div>
                 </div>
-                <button onclick="closeAuthModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
+                <button id="auth-modal-close-btn" onclick="closeAuthModal()" class="hidden w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
                     <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
