@@ -336,6 +336,29 @@ class UserStatusUpdateRequest(BaseModel):
     username: str
     api_status: str  # pending, approved, blocked
 
+def validate_password_strength(password: str) -> Optional[str]:
+    """
+    비밀번호 정책 검증:
+    - 최소 8자 이상, 최대 64자 이하
+    - 영문자(대/소문자) 1개 이상 포함
+    - 숫자(0-9) 1개 이상 포함
+    - 특수문자(!@#$%^&*()_+-=[]{}|;:,.<>/? 등) 1개 이상 포함
+    - 공백 미허용
+    """
+    if not password:
+        return "비밀번호를 입력해 주세요."
+    if len(password) < 8 or len(password) > 64:
+        return "비밀번호는 최소 8자 이상, 64자 이하여야 합니다."
+    if " " in password:
+        return "비밀번호에 공백은 포함될 수 없습니다."
+    if not re.search(r'[A-Za-z]', password):
+        return "비밀번호에 영문자가 최소 1개 이상 포함되어야 합니다."
+    if not re.search(r'\d', password):
+        return "비밀번호에 숫자가 최소 1개 이상 포함되어야 합니다."
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]', password):
+        return "비밀번호에 특수문자(!@#$%^&* 등)가 최소 1개 이상 포함되어야 합니다."
+    return None
+
 @app.post("/api/auth/register")
 async def register(req: RegisterRequest, request: Request):
     username = req.username.strip()
@@ -344,8 +367,10 @@ async def register(req: RegisterRequest, request: Request):
 
     if not username or len(username) < 3:
         raise HTTPException(status_code=400, detail="아이디는 최소 3자 이상이어야 합니다.")
-    if not password or len(password) < 4:
-        raise HTTPException(status_code=400, detail="비밀번호는 최소 4자 이상이어야 합니다.")
+    
+    pwd_err = validate_password_strength(password)
+    if pwd_err:
+        raise HTTPException(status_code=400, detail=f"비밀번호 보안 정책 미충족: {pwd_err}")
 
     existing = get_user_by_username(username)
     if existing:
@@ -484,12 +509,12 @@ async def admin_get_stats(admin: dict = Depends(require_admin_user), request: Re
     return stats
 
 @app.get("/api/admin/logs/login")
-async def admin_get_login_logs(limit: int = 50, admin: dict = Depends(require_admin_user)):
-    return get_login_logs(limit=limit)
+async def admin_get_login_logs(limit: int = 50, username: Optional[str] = None, admin: dict = Depends(require_admin_user)):
+    return get_login_logs(limit=limit, username=username)
 
 @app.get("/api/admin/logs/usage")
-async def admin_get_usage_logs(limit: int = 50, admin: dict = Depends(require_admin_user)):
-    return get_usage_logs(limit=limit)
+async def admin_get_usage_logs(limit: int = 50, username: Optional[str] = None, admin: dict = Depends(require_admin_user)):
+    return get_usage_logs(limit=limit, username=username)
 
 # --- Standard DevOps & Server Endpoints ---
 @app.get("/api/status")

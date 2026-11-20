@@ -122,31 +122,95 @@
         </div>
     </header>
 
-    <!-- Guest Locked Gate Hero Banner (Shown when not logged in) -->
-    <div id="guest-gate-banner" class="max-w-4xl mx-auto px-6 py-12 text-center flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-        <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/30 text-white text-2xl">
-            <i class="fa-solid fa-lock"></i>
+    <!-- Dedicated Auth Gate Screen (Shown when not authenticated) -->
+    <div id="guest-gate-banner" class="max-w-md mx-auto px-4 py-8 md:py-14 w-full flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+        <!-- Logo & Branding Header -->
+        <div class="text-center space-y-2">
+            <div class="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/25 text-white text-2xl">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+                TechPrep-AI
+            </h1>
+            <p class="text-xs text-slate-500">실시간 IT 트렌드 & 시니어 면접관 코칭 관제탑</p>
         </div>
-        <div class="space-y-2">
-            <span class="text-xs uppercase tracking-wider font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-                Member Authentication Required
-            </span>
-            <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                TechPrep-AI 실시간 트렌드 & 실무 인사이트 관제탑
-            </h2>
-            <p class="text-xs md:text-sm text-slate-500 max-w-lg mx-auto">
-                본 플랫폼은 최신 클라우드, 인프라/DevOps, 보안, AI/ML 실무 인사이트 및 RAG 시니어 면접관 멘토링을 제공합니다. 서비스를 이용하시려면 로그인이 필요합니다.
-            </p>
-        </div>
-        <div class="flex items-center gap-3">
-            <button onclick="openAuthModal('login')" class="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/25 hover:shadow-lg transition flex items-center gap-2">
-                <i class="fa-solid fa-right-to-bracket"></i>
-                <span>로그인하고 관제탑 접속하기</span>
-            </button>
-            <button onclick="openAuthModal('register')" class="px-5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs hover:border-indigo-300 transition flex items-center gap-2">
-                <i class="fa-solid fa-user-plus text-indigo-600"></i>
-                <span>신규 회원가입</span>
-            </button>
+
+        <!-- Auth Card Container -->
+        <div class="w-full bg-white rounded-3xl shadow-xl shadow-indigo-100/70 border border-slate-200/90 overflow-hidden">
+            <!-- Mode Switch Header -->
+            <div class="grid grid-cols-2 bg-slate-50/80 p-1.5 border-b border-slate-100 text-xs font-bold">
+                <button type="button" onclick="openAuthModal('login')" id="gate-tab-login" class="py-2 rounded-2xl bg-white text-indigo-600 shadow-xs transition">
+                    로그인
+                </button>
+                <button type="button" onclick="openAuthModal('register')" id="gate-tab-register" class="py-2 rounded-2xl text-slate-500 hover:text-slate-800 transition">
+                    회원가입
+                </button>
+            </div>
+
+            <!-- Form Body -->
+            <div class="p-6 space-y-4">
+                <div id="gate-auth-error-alert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation shrink-0 text-sm"></i>
+                    <span id="gate-auth-error-text">오류가 발생했습니다.</span>
+                </div>
+                <div id="gate-auth-success-alert" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check shrink-0 text-sm"></i>
+                    <span id="gate-auth-success-text">성공적으로 처리되었습니다.</span>
+                </div>
+
+                <form id="gate-auth-form" onsubmit="handleGateAuthSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">아이디</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-user text-xs"></i>
+                            </span>
+                            <input type="text" id="gate-auth-username" required minlength="3" placeholder="아이디 입력 (최소 3자)"
+                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-key text-xs"></i>
+                            </span>
+                            <input type="password" id="gate-auth-password" required minlength="8" placeholder="비밀번호 입력 (최소 8자)"
+                                oninput="checkGatePasswordPolicyLive(this.value)"
+                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                        <!-- Password Strength Policy Checklist (Visible in Register Mode) -->
+                        <div id="gate-auth-pwd-policy-box" class="hidden mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
+                            <div class="text-slate-500 font-bold mb-1 flex items-center justify-between">
+                                <span>비밀번호 보안 필수 조건:</span>
+                                <span id="gate-pwd-policy-status" class="font-mono text-[10px] text-slate-400">0/4 충족</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 text-[10.5px]">
+                                <div id="gate-policy-len" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 최소 8자 이상</div>
+                                <div id="gate-policy-eng" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 영문자 포함</div>
+                                <div id="gate-policy-num" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 숫자 1개 이상</div>
+                                <div id="gate-policy-sym" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 특수문자 1개 이상</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="gate-auth-pending-notice" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+                        <i class="fa-solid fa-info-circle mr-1"></i> 일반 회원가입 시 <strong>승인 대기(pending)</strong> 상태로 생성되며, 관리자 승인 후 GEMINI 챗봇 API를 호출할 수 있습니다.
+                    </div>
+
+                    <button type="submit" id="gate-auth-submit-btn" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+                        <span id="gate-auth-submit-text">로그인하기</span>
+                    </button>
+                </form>
+
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span id="gate-auth-toggle-prompt">아직 계정이 없으신가요?</span>
+                    <button type="button" onclick="toggleAuthMode()" id="gate-auth-toggle-btn" class="font-bold text-indigo-600 hover:text-indigo-800 underline">
+                        회원가입하기
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -550,7 +614,10 @@
                 if (guestGateBanner) guestGateBanner.classList.remove('hidden');
                 if (modalCloseBtn) modalCloseBtn.classList.add('hidden');
 
-                // 로그인 모달 자동으로 오픈
+                // 비로그인 상태: 화면 중앙의 전용 인증 게이트 활성화 (모달 팝업 대신 전용 카드 노출)
+                if (modalCloseBtn) modalCloseBtn.classList.add('hidden');
+                const modal = document.getElementById('auth-modal');
+                if (modal) modal.classList.add('hidden');
                 openAuthModal('login');
             }
         }
@@ -583,20 +650,52 @@
             document.getElementById('auth-username').value = '';
             document.getElementById('auth-password').value = '';
 
+            const pwdPolicyBox = document.getElementById('auth-pwd-policy-box');
+            const gatePwdPolicyBox = document.getElementById('gate-auth-pwd-policy-box');
+            const gatePendingNotice = document.getElementById('gate-auth-pending-notice');
+            const gateTabLogin = document.getElementById('gate-tab-login');
+            const gateTabRegister = document.getElementById('gate-tab-register');
+            const gateSubmitText = document.getElementById('gate-auth-submit-text');
+            const gateTogglePrompt = document.getElementById('gate-auth-toggle-prompt');
+            const gateToggleBtn = document.getElementById('gate-auth-toggle-btn');
+
             if (mode === 'register') {
-                modalTitle.textContent = '회원가입';
-                modalIcon.className = 'fa-solid fa-user-plus text-white';
-                submitText.textContent = '회원가입 완료';
-                togglePrompt.textContent = '이미 계정이 있으신가요?';
-                toggleBtn.textContent = '로그인하기';
-                pendingNotice.classList.remove('hidden');
+                if (modalTitle) modalTitle.textContent = '회원가입';
+                if (modalIcon) modalIcon.className = 'fa-solid fa-user-plus text-white';
+                if (submitText) submitText.textContent = '회원가입 완료';
+                if (togglePrompt) togglePrompt.textContent = '이미 계정이 있으신가요?';
+                if (toggleBtn) toggleBtn.textContent = '로그인하기';
+                if (pendingNotice) pendingNotice.classList.remove('hidden');
+                if (pwdPolicyBox) pwdPolicyBox.classList.remove('hidden');
+
+                // Sync Gate Screen
+                if (gateTabLogin) gateTabLogin.className = 'py-2 rounded-2xl text-slate-500 hover:text-slate-800 transition';
+                if (gateTabRegister) gateTabRegister.className = 'py-2 rounded-2xl bg-white text-indigo-600 shadow-xs transition';
+                if (gateSubmitText) gateSubmitText.textContent = '회원가입 완료';
+                if (gateTogglePrompt) gateTogglePrompt.textContent = '이미 계정이 있으신가요?';
+                if (gateToggleBtn) gateToggleBtn.textContent = '로그인하기';
+                if (gatePendingNotice) gatePendingNotice.classList.remove('hidden');
+                if (gatePwdPolicyBox) gatePwdPolicyBox.classList.remove('hidden');
+
+                checkPasswordPolicyLive('');
+                checkGatePasswordPolicyLive('');
             } else {
-                modalTitle.textContent = '로그인';
-                modalIcon.className = 'fa-solid fa-lock text-white';
-                submitText.textContent = '로그인하기';
-                togglePrompt.textContent = '아직 계정이 없으신가요?';
-                toggleBtn.textContent = '회원가입하기';
-                pendingNotice.classList.add('hidden');
+                if (modalTitle) modalTitle.textContent = '로그인';
+                if (modalIcon) modalIcon.className = 'fa-solid fa-lock text-white';
+                if (submitText) submitText.textContent = '로그인하기';
+                if (togglePrompt) togglePrompt.textContent = '아직 계정이 없으신가요?';
+                if (toggleBtn) toggleBtn.textContent = '회원가입하기';
+                if (pendingNotice) pendingNotice.classList.add('hidden');
+                if (pwdPolicyBox) pwdPolicyBox.classList.add('hidden');
+
+                // Sync Gate Screen
+                if (gateTabLogin) gateTabLogin.className = 'py-2 rounded-2xl bg-white text-indigo-600 shadow-xs transition';
+                if (gateTabRegister) gateTabRegister.className = 'py-2 rounded-2xl text-slate-500 hover:text-slate-800 transition';
+                if (gateSubmitText) gateSubmitText.textContent = '로그인하기';
+                if (gateTogglePrompt) gateTogglePrompt.textContent = '아직 계정이 없으신가요?';
+                if (gateToggleBtn) gateToggleBtn.textContent = '회원가입하기';
+                if (gatePendingNotice) gatePendingNotice.classList.add('hidden');
+                if (gatePwdPolicyBox) gatePwdPolicyBox.classList.add('hidden');
             }
 
             modal.classList.remove('hidden');
@@ -635,6 +734,155 @@
             document.getElementById('auth-success-alert').classList.add('hidden');
         }
 
+        function checkGatePasswordPolicyLive(pwd) {
+            const hasLen = pwd.length >= 8 && pwd.length <= 64;
+            const hasEng = /[A-Za-z]/.test(pwd);
+            const hasNum = /[0-9]/.test(pwd);
+            const hasSym = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/.test(pwd);
+
+            const updateItem = (elemId, ok) => {
+                const el = document.getElementById(elemId);
+                if (!el) return;
+                if (ok) {
+                    el.className = 'flex items-center gap-1.5 text-emerald-600 font-bold';
+                    el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500"></i> ' + el.textContent.trim();
+                } else {
+                    el.className = 'flex items-center gap-1.5 text-slate-400 font-normal';
+                    el.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-400"></i> ' + el.textContent.trim();
+                }
+            };
+
+            updateItem('gate-policy-len', hasLen);
+            updateItem('gate-policy-eng', hasEng);
+            updateItem('gate-policy-num', hasNum);
+            updateItem('gate-policy-sym', hasSym);
+
+            const score = (hasLen ? 1 : 0) + (hasEng ? 1 : 0) + (hasNum ? 1 : 0) + (hasSym ? 1 : 0);
+            const statusElem = document.getElementById('gate-pwd-policy-status');
+            if (statusElem) {
+                statusElem.textContent = `${score}/4 충족`;
+                statusElem.className = score === 4 ? 'font-mono text-[10px] text-emerald-600 font-bold' : 'font-mono text-[10px] text-slate-400';
+            }
+
+            return score === 4;
+        }
+
+        function showGateAuthAlert(type, message) {
+            const errAlert = document.getElementById('gate-auth-error-alert');
+            const succAlert = document.getElementById('gate-auth-success-alert');
+            if (!errAlert || !succAlert) return;
+            if (type === 'auth-error') {
+                document.getElementById('gate-auth-error-text').textContent = message;
+                errAlert.classList.remove('hidden');
+                succAlert.classList.add('hidden');
+            } else {
+                document.getElementById('gate-auth-success-text').textContent = message;
+                succAlert.classList.remove('hidden');
+                errAlert.classList.add('hidden');
+            }
+        }
+
+        function hideGateAuthAlerts() {
+            const errAlert = document.getElementById('gate-auth-error-alert');
+            const succAlert = document.getElementById('gate-auth-success-alert');
+            if (errAlert) errAlert.classList.add('hidden');
+            if (succAlert) succAlert.classList.add('hidden');
+        }
+
+        async function handleGateAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('gate-auth-username').value.trim();
+            const password = document.getElementById('gate-auth-password').value.trim();
+            const submitBtn = document.getElementById('gate-auth-submit-btn');
+
+            if (!username || !password) return;
+
+            if (currentAuthMode === 'register') {
+                if (password.includes(' ')) {
+                    showGateAuthAlert('auth-error', '비밀번호에 공백은 포함될 수 없습니다.');
+                    return;
+                }
+                const isValid = checkGatePasswordPolicyLive(password);
+                if (!isValid) {
+                    showGateAuthAlert('auth-error', '비밀번호 보안 규칙(8자 이상, 영문, 숫자, 특수문자 각 1개 이상)을 모두 충족해야 합니다.');
+                    return;
+                }
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 처리 중...';
+            hideGateAuthAlerts();
+
+            const endpoint = currentAuthMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('techprep_auth_token', authToken);
+                    currentUser = data.user;
+
+                    if (currentAuthMode === 'register') {
+                        showGateAuthAlert('auth-success', '회원가입 완료! 잠시 후 대시보드로 진입합니다.');
+                    } else {
+                        showGateAuthAlert('auth-success', `환영합니다, ${currentUser.username}님!`);
+                    }
+
+                    setTimeout(() => {
+                        updateAuthUI(currentUser);
+                        closeAuthModal();
+                    }, 600);
+                } else {
+                    showGateAuthAlert('auth-error', data.detail || '인증에 실패했습니다. 다시 확인해 주세요.');
+                }
+            } catch (err) {
+                console.error('Gate auth error:', err);
+                showGateAuthAlert('auth-error', '백엔드 서버와 통신할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>${currentAuthMode === 'register' ? '회원가입 완료' : '로그인하기'}</span>`;
+            }
+        }
+
+        function checkPasswordPolicyLive(pwd) {
+            const hasLen = pwd.length >= 8 && pwd.length <= 64;
+            const hasEng = /[A-Za-z]/.test(pwd);
+            const hasNum = /[0-9]/.test(pwd);
+            const hasSym = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/.test(pwd);
+
+            const updateItem = (elemId, ok) => {
+                const el = document.getElementById(elemId);
+                if (!el) return;
+                if (ok) {
+                    el.className = 'flex items-center gap-1.5 text-emerald-600 font-bold';
+                    el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500"></i> ' + el.textContent.trim();
+                } else {
+                    el.className = 'flex items-center gap-1.5 text-slate-400 font-normal';
+                    el.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-400"></i> ' + el.textContent.trim();
+                }
+            };
+
+            updateItem('policy-len', hasLen);
+            updateItem('policy-eng', hasEng);
+            updateItem('policy-num', hasNum);
+            updateItem('policy-sym', hasSym);
+
+            const score = (hasLen ? 1 : 0) + (hasEng ? 1 : 0) + (hasNum ? 1 : 0) + (hasSym ? 1 : 0);
+            const statusElem = document.getElementById('pwd-policy-status');
+            if (statusElem) {
+                statusElem.textContent = `${score}/4 충족`;
+                statusElem.className = score === 4 ? 'font-mono text-[10px] text-emerald-600 font-bold' : 'font-mono text-[10px] text-slate-400';
+            }
+
+            return score === 4;
+        }
+
         async function handleAuthSubmit(e) {
             e.preventDefault();
             const username = document.getElementById('auth-username').value.trim();
@@ -642,6 +890,19 @@
             const submitBtn = document.getElementById('auth-submit-btn');
 
             if (!username || !password) return;
+
+            // 회원가입 모드일 때 클라이언트 측 비밀번호 보안 정책 선검증
+            if (currentAuthMode === 'register') {
+                if (password.includes(' ')) {
+                    showAuthAlert('auth-error', '비밀번호에 공백은 포함될 수 없습니다.');
+                    return;
+                }
+                const isValid = checkPasswordPolicyLive(password);
+                if (!isValid) {
+                    showAuthAlert('auth-error', '비밀번호 보안 규칙(8자 이상, 영문, 숫자, 특수문자 각 1개 이상)을 모두 충족해야 합니다.');
+                    return;
+                }
+            }
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 처리 중...';
@@ -697,6 +958,9 @@
         }
 
         let currentAuditTab = 'login';
+        let currentAuditUserFilter = '';
+        let allAuditUsersList = [];
+
         function switchAuditTab(tab) {
             currentAuditTab = tab;
             const btnLogin = document.getElementById('tab-btn-login');
@@ -715,6 +979,29 @@
                 viewUsage.classList.remove('hidden');
                 viewLogin.classList.add('hidden');
             }
+            loadAdminLogs();
+        }
+
+        function handleAuditUserFilterChange(selectedUsername) {
+            currentAuditUserFilter = selectedUsername.trim();
+            loadAdminLogs();
+        }
+
+        function populateAuditUserFilterDropdown(users) {
+            const selectElem = document.getElementById('adm-audit-user-filter');
+            if (!selectElem) return;
+
+            const existingVal = currentAuditUserFilter;
+            // Build unique usernames
+            const userNames = Array.from(new Set(users.map(u => u.username).filter(Boolean)));
+            allAuditUsersList = userNames;
+
+            let htmlOpts = '<option value="">전체 사용자</option>';
+            userNames.forEach(uname => {
+                const selected = (uname === existingVal) ? 'selected' : '';
+                htmlOpts += `<option value="${uname}" ${selected}>${uname}</option>`;
+            });
+            selectElem.innerHTML = htmlOpts;
         }
 
         async function loadAdminStats() {
@@ -806,6 +1093,7 @@
         }
 
         function renderUserStatsTable(users) {
+            populateAuditUserFilterDropdown(users);
             const tbody = document.getElementById('adm-users-table-body');
             if (!users || users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400">등록된 회원이 없습니다.</td></tr>';
@@ -901,14 +1189,20 @@
             const loginBody = document.getElementById('adm-login-logs-body');
             const usageBody = document.getElementById('adm-usage-logs-body');
 
+            const filterParam = currentAuditUserFilter ? `&username=${encodeURIComponent(currentAuditUserFilter)}` : '';
+
             // 1. Load Login Logs
             try {
-                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/login?limit=50`, {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/login?limit=50${filterParam}`, {
                     headers: getAuthHeaders()
                 });
                 if (res.ok) {
-                    const logs = await res.json();
-                    renderLoginLogs(Array.isArray(logs) ? logs : []);
+                    let logs = await res.json();
+                    if (!Array.isArray(logs)) logs = [];
+                    if (currentAuditUserFilter) {
+                        logs = logs.filter(l => l.username === currentAuditUserFilter);
+                    }
+                    renderLoginLogs(logs);
                 } else {
                     const err = await res.text();
                     console.error('Failed to load login logs:', res.status, err);
@@ -921,9 +1215,17 @@
 
             // 2. Load Usage Logs
             try {
-                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/usage?limit=50`, {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/usage?limit=50${filterParam}`, {
                     headers: getAuthHeaders()
                 });
+                if (res.ok) {
+                    let logs = await res.json();
+                    if (!Array.isArray(logs)) logs = [];
+                    if (currentAuditUserFilter) {
+                        logs = logs.filter(l => l.username === currentAuditUserFilter);
+                    }
+                    renderUsageLogs(logs);
+                } else {
                 if (res.ok) {
                     const logs = await res.json();
                     renderUsageLogs(Array.isArray(logs) ? logs : []);
@@ -2086,8 +2388,22 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                                 <i class="fa-solid fa-key text-xs"></i>
                             </span>
-                            <input type="password" id="auth-password" required minlength="4" placeholder="비밀번호 입력 (최소 4자)"
+                            <input type="password" id="auth-password" required minlength="8" placeholder="비밀번호 입력 (8~64자, 영문/숫자/특수문자 포함)"
+                                oninput="checkPasswordPolicyLive(this.value)"
                                 class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                        <!-- Password Strength Policy Checklist (Visible in Register Mode) -->
+                        <div id="auth-pwd-policy-box" class="hidden mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
+                            <div class="text-slate-500 font-bold mb-1 flex items-center justify-between">
+                                <span>비밀번호 보안 필수 조건:</span>
+                                <span id="pwd-policy-status" class="font-mono text-[10px] text-slate-400">0/4 충족</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 text-[10.5px]">
+                                <div id="policy-len" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 최소 8자 이상</div>
+                                <div id="policy-eng" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 영문자 포함</div>
+                                <div id="policy-num" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 숫자 1개 이상</div>
+                                <div id="policy-sym" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 특수문자 1개 이상</div>
+                            </div>
                         </div>
                     </div>
 
@@ -2262,14 +2578,25 @@
                 <!-- 4. Security & Audit Logs Section (Tabs: Login Logs / Usage Logs) -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                     <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <div class="flex items-center gap-3">
-                            <span class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
-                                <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
-                                보안 및 감사 로그 (Audit Logs)
-                            </span>
-                            <div class="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-xl text-[11px] font-semibold">
-                                <button onclick="switchAuditTab('login')" id="tab-btn-login" class="px-3 py-1 rounded-lg bg-white text-indigo-600 shadow-xs transition">로그인 시도 로그</button>
-                                <button onclick="switchAuditTab('usage')" id="tab-btn-usage" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">API / 조회 사용 로그</button>
+                        <div class="flex flex-wrap items-center justify-between gap-3 w-full">
+                            <div class="flex items-center gap-3">
+                                <span class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+                                    보안 및 감사 로그 (Audit Logs)
+                                </span>
+                                <div class="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-xl text-[11px] font-semibold">
+                                    <button onclick="switchAuditTab('login')" id="tab-btn-login" class="px-3 py-1 rounded-lg bg-white text-indigo-600 shadow-xs transition">로그인 시도 로그</button>
+                                    <button onclick="switchAuditTab('usage')" id="tab-btn-usage" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">API / 조회 사용 로그</button>
+                                </div>
+                            </div>
+                            <!-- User Filter Dropdown -->
+                            <div class="flex items-center gap-2 text-xs">
+                                <label for="adm-audit-user-filter" class="text-slate-500 font-bold text-[11px] flex items-center gap-1">
+                                    <i class="fa-solid fa-filter text-indigo-500"></i> 사용자 필터:
+                                </label>
+                                <select id="adm-audit-user-filter" onchange="handleAuditUserFilterChange(this.value)" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-semibold focus:outline-hidden focus:border-indigo-500 shadow-2xs">
+                                    <option value="">전체 사용자</option>
+                                </select>
                             </div>
                         </div>
                     </div>

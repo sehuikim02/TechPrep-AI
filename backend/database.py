@@ -339,19 +339,25 @@ def format_row_dict(row: Any) -> dict:
             d[k] = v.strftime("%Y-%m-%d %H:%M:%S")
     return d
 
-def get_login_logs(limit: int = 100) -> List[dict]:
+def get_login_logs(limit: int = 100, username: Optional[str] = None) -> List[dict]:
     use_pg = is_postgres()
     ph = "%s" if use_pg else "?"
     with get_db_cursor() as cursor:
-        cursor.execute(f"SELECT * FROM login_logs ORDER BY id DESC LIMIT {ph}", (limit,))
+        if username and username.strip():
+            cursor.execute(f"SELECT * FROM login_logs WHERE username = {ph} ORDER BY id DESC LIMIT {ph}", (username.strip(), limit))
+        else:
+            cursor.execute(f"SELECT * FROM login_logs ORDER BY id DESC LIMIT {ph}", (limit,))
         rows = cursor.fetchall()
         return [format_row_dict(r) for r in rows]
 
-def get_usage_logs(limit: int = 100) -> List[dict]:
+def get_usage_logs(limit: int = 100, username: Optional[str] = None) -> List[dict]:
     use_pg = is_postgres()
     ph = "%s" if use_pg else "?"
     with get_db_cursor() as cursor:
-        cursor.execute(f"SELECT * FROM usage_logs ORDER BY id DESC LIMIT {ph}", (limit,))
+        if username and username.strip():
+            cursor.execute(f"SELECT * FROM usage_logs WHERE username = {ph} ORDER BY id DESC LIMIT {ph}", (username.strip(), limit))
+        else:
+            cursor.execute(f"SELECT * FROM usage_logs ORDER BY id DESC LIMIT {ph}", (limit,))
         rows = cursor.fetchall()
         return [format_row_dict(r) for r in rows]
 
