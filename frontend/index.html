@@ -1702,6 +1702,16 @@
 
         // GitHub Pages 전용 클라이언트 사이드 RAG + 시니어 면접관 지능형 응답 엔진
         function generateClientMentorReply(userMsg, ragArticles = []) {
+            // 1. 인사 및 스몰토크
+            if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello') || low.includes('hi')) {
+                return {
+                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 멘토입니다.<br><br>" +
+                           "취업 준비와 기술 공부는 잘 되어가고 계신가요? 기술 질문(K8s, Docker, Cloud, AI 등)이나 포트폴리오/면접 고민, 혹은 가벼운 이야기라도 편하게 말씀해 주세요. 든든한 선배로서 함께 고민해 드릴게요!",
+                    model: "TechPrep AI Mentor (Daily Coach)",
+                    references: null
+                };
+            }
+
             const low = userMsg.toLowerCase();
             let referencesMeta = null;
             let ragSnippetHtml = "";
