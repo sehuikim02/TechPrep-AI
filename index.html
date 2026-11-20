@@ -689,9 +689,7 @@
                 return;
             }
             document.getElementById('admin-modal').classList.remove('hidden');
-            loadAdminStats();
-            loadAdminUsers();
-            loadAdminLogs();
+            loadAllAdminData();
         }
 
         function closeAdminModal() {
@@ -886,31 +884,57 @@
             }
         }
 
-        async function loadAdminLogs() {
-            // Load Login Logs
+        async function loadAllAdminData() {
+            const refreshIcon = document.getElementById('admin-refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
             try {
-                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/login?limit=40`, {
+                await Promise.all([
+                    loadAdminStats(),
+                    loadAdminLogs()
+                ]);
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+            }
+        }
+
+        async function loadAdminLogs() {
+            const loginBody = document.getElementById('adm-login-logs-body');
+            const usageBody = document.getElementById('adm-usage-logs-body');
+
+            // 1. Load Login Logs
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/login?limit=50`, {
                     headers: getAuthHeaders()
                 });
                 if (res.ok) {
                     const logs = await res.json();
-                    renderLoginLogs(logs);
+                    renderLoginLogs(Array.isArray(logs) ? logs : []);
+                } else {
+                    const err = await res.text();
+                    console.error('Failed to load login logs:', res.status, err);
+                    if (loginBody) loginBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-rose-500 font-semibold">로그인 로그 조회 실패 (${res.status})</td></tr>`;
                 }
             } catch (err) {
-                console.error('Failed to load login logs:', err);
+                console.error('Network error loading login logs:', err);
+                if (loginBody) loginBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">서버와 통신할 수 없습니다.</td></tr>`;
             }
 
-            // Load Usage Logs
+            // 2. Load Usage Logs
             try {
-                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/usage?limit=40`, {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/logs/usage?limit=50`, {
                     headers: getAuthHeaders()
                 });
                 if (res.ok) {
                     const logs = await res.json();
-                    renderUsageLogs(logs);
+                    renderUsageLogs(Array.isArray(logs) ? logs : []);
+                } else {
+                    const err = await res.text();
+                    console.error('Failed to load usage logs:', res.status, err);
+                    if (usageBody) usageBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-rose-500 font-semibold">사용 로그 조회 실패 (${res.status})</td></tr>`;
                 }
             } catch (err) {
-                console.error('Failed to load usage logs:', err);
+                console.error('Network error loading usage logs:', err);
+                if (usageBody) usageBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-slate-400">서버와 통신할 수 없습니다.</td></tr>`;
             }
         }
 
@@ -1387,7 +1411,7 @@
             }
         }
 
-        function createNewChatRoom(switchImmediately = true) {
+        async function createNewChatRoom(switchImmediately = true) {
             const newRoomId = 'room-' + Date.now().toString(36);
             const newRoom = {
                 id: newRoomId,
@@ -1396,21 +1420,34 @@
                 messages: []
             };
 
+            // 1. Optimistic UI: 프론트엔드 목록에 즉시 추가 및 반영
             chatRooms.unshift(newRoom);
             saveChatRooms();
+            renderRoomList();
 
             if (switchImmediately) {
                 switchChatRoom(newRoomId);
                 const sidebar = document.getElementById('chat-rooms-sidebar');
-                if (!sidebar.classList.contains('hidden')) {
+                if (sidebar && !sidebar.classList.contains('hidden')) {
                     sidebar.classList.add('hidden');
                 }
             }
+
+            // 2. 백엔드 세션 스토어에도 동기화 생성 (백그라운드 비동기)
+            try {
+                if (authToken) {
+                    fetch(`${BACKEND_BASE_URL}/api/chats`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ title: '새 대화' })
+                    }).catch(err => console.log('Backend room sync note:', err));
+                }
+            } catch (e) {}
         }
 
         function switchChatRoom(roomId) {
             activeRoomId = roomId;
-            localStorage.setItem(ACTIVE_ROOM_KEY, roomId);
+            localStorage.setItem(getUserActiveRoomKey(), roomId);
             renderRoomList();
             loadRoomMessages(roomId);
 
@@ -2072,7 +2109,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="loadAdminStats()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/20">
+                    <button onclick="loadAllAdminData()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/20">
                         <i id="admin-refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i>
                         <span>지표 갱신</span>
                     </button>
