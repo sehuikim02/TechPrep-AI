@@ -122,8 +122,19 @@
         </div>
     </header>
 
+    <!-- Dedicated Auth Gate Loading Spinner (Displayed during initial token verification to prevent flash) -->
+    <div id="auth-gate-checking" class="hidden min-h-[60vh] flex flex-col items-center justify-center space-y-4">
+        <div class="w-14 h-14 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/25 text-white text-2xl animate-pulse">
+            <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div class="flex items-center space-x-2 text-indigo-600 font-bold text-xs">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <span>인증 상태 확인 중...</span>
+        </div>
+    </div>
+
     <!-- Dedicated Auth Gate Screen (Shown when not authenticated) -->
-    <div id="guest-gate-banner" class="max-w-md mx-auto px-4 py-8 md:py-14 w-full flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+    <div id="guest-gate-banner" class="hidden max-w-md mx-auto px-4 py-8 md:py-14 w-full flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
         <!-- Logo & Branding Header -->
         <div class="text-center space-y-2">
             <div class="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/25 text-white text-2xl">
@@ -525,10 +536,19 @@
         }
 
         async function verifyCurrentUser() {
+            const checkingIndicator = document.getElementById('auth-gate-checking');
+            const guestGateBanner = document.getElementById('guest-gate-banner');
+
             if (!authToken) {
+                if (checkingIndicator) checkingIndicator.classList.add('hidden');
                 updateAuthUI(null);
                 return;
             }
+
+            // 토큰이 존재할 때는 검증 완료 시까지 로그인 카드 노출을 막고 로딩 인디케이터 표시
+            if (checkingIndicator) checkingIndicator.classList.remove('hidden');
+            if (guestGateBanner) guestGateBanner.classList.add('hidden');
+
             try {
                 const res = await fetch(`${BACKEND_BASE_URL}/api/auth/me`, {
                     headers: getAuthHeaders()
@@ -537,6 +557,7 @@
                     const data = await res.json();
                     if (data.authenticated) {
                         currentUser = data.user;
+                        if (checkingIndicator) checkingIndicator.classList.add('hidden');
                         updateAuthUI(currentUser);
                         return;
                     }
@@ -546,10 +567,14 @@
             }
             // If failed to authenticate, clear invalid token
             currentUser = null;
+            if (checkingIndicator) checkingIndicator.classList.add('hidden');
             updateAuthUI(null);
         }
 
         function updateAuthUI(user) {
+            const checkingIndicator = document.getElementById('auth-gate-checking');
+            if (checkingIndicator) checkingIndicator.classList.add('hidden');
+
             const topHeader = document.getElementById('top-main-header');
             const guestView = document.getElementById('auth-guest-view');
             const loggedInView = document.getElementById('auth-logged-in-view');
@@ -971,6 +996,8 @@
             selectElem.innerHTML = htmlOpts;
         }
 
+        let lastAdminStatsCache = null;
+
         async function loadAdminStats() {
             const refreshIcon = document.getElementById('admin-refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
@@ -981,6 +1008,7 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
+                    lastAdminStatsCache = data;
                     renderAdminStats(data);
                 }
             } catch (err) {
@@ -1176,6 +1204,21 @@
                 }
             }
 
+            // 1. Optimistic UI: 즉시 캐시 데이터의 상태를 업데이트하고 테이블 리렌더링
+            if (lastAdminStatsCache && Array.isArray(lastAdminStatsCache.user_stats)) {
+                const target = lastAdminStatsCache.user_stats.find(u => u.username === username);
+                if (target) {
+                    target.api_status = newStatus;
+                    if (newStatus === 'approved') {
+                        target.failed_login_attempts = 0;
+                        target.block_reason = '';
+                    } else if (newStatus === 'blocked') {
+                        target.block_reason = reason || '관리자 수동 차단';
+                    }
+                    renderUserStatsTable(lastAdminStatsCache.user_stats);
+                }
+            }
+
             try {
                 const res = await fetch(`${BACKEND_BASE_URL}/api/admin/users/status`, {
                     method: 'POST',
@@ -1184,20 +1227,34 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(data.message || '상태가 변경되었습니다.');
-                    loadAdminStats();
+                    // 백엔드 영속성 반영 후 전체 최신 지표/감사로그 비동기 재동기화
+                    await loadAdminStats();
                 } else {
                     alert(data.detail || '상태 변경에 실패했습니다.');
+                    await loadAdminStats(); // 롤백 동기화
                 }
             } catch (err) {
                 console.error('Error changing user status:', err);
                 alert('요청 중 오류가 발생했습니다.');
+                await loadAdminStats();
             }
         }
 
         async function bulkApprovePendingUsers(count) {
             if (!confirm(`대기 중인 ${count}명의 회원을 모두 일괄 승인(approved)하시겠습니까?`)) {
                 return;
+            }
+
+            // 1. Optimistic UI: 모든 pending 유저 즉시 approved 반영 및 렌더링
+            if (lastAdminStatsCache && Array.isArray(lastAdminStatsCache.user_stats)) {
+                lastAdminStatsCache.user_stats.forEach(u => {
+                    if (u.api_status === 'pending' && u.role !== 'admin') {
+                        u.api_status = 'approved';
+                        u.failed_login_attempts = 0;
+                        u.block_reason = '';
+                    }
+                });
+                renderUserStatsTable(lastAdminStatsCache.user_stats);
             }
 
             try {
@@ -1208,14 +1265,15 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(data.message || `${count}명의 회원이 승인되었습니다.`);
-                    loadAdminStats();
+                    await loadAdminStats();
                 } else {
                     alert(data.detail || '일괄 승인에 실패했습니다.');
+                    await loadAdminStats();
                 }
             } catch (err) {
                 console.error('Error bulk approving users:', err);
                 alert('일괄 승인 요청 중 오류가 발생했습니다.');
+                await loadAdminStats();
             }
         }
 
