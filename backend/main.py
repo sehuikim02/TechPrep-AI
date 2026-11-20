@@ -41,8 +41,8 @@ app.add_middleware(
 
 # Gemini API Client 초기화
 GEMINI_CLIENT = None
-GEMINI_MODEL = "gemini-3.5-flash-lite"
-GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"]
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash-lite"]
 GEMINI_KEY_STATUS = "UNCONFIGURED"  # HEALTHY, INVALID, UNCONFIGURED
 
 SYSTEM_INSTRUCTION = (
@@ -468,7 +468,53 @@ async def inject_fault(req: ChaosRequest):
     return {"message": f"Fault '{req.fault_type}' successfully injected", "current_status": server_state.status}
 
 # --- RAG (Retrieval-Augmented Generation) Helper ---
-def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
+# --- Intelligent Intent Routing for RAG ---
+def should_perform_rag(query: str, context_topic: Optional[str] = None) -> bool:
+    """
+    질문 유형을 분석하여 RAG 검색이 실제로 필요한 도메인/기술 이슈인지 판별합니다.
+    - 일상, 잡담, 날씨, 단순 상식, 일반 커리어 고민, 일반 신입 면접 조언 등은 False (Bypass)
+    - 최신 IT 트렌드, 보안(CVE), 클라우드 아키텍처, 인프라, k8s, AI/ML 기술 이슈는 True
+    """
+    if context_topic and context_topic.strip():
+        return True
+
+    low = query.lower().strip()
+
+    # 1. 명백한 일상/스몰토크/일반 멘토링 패턴 (RAG Bypass)
+    bypass_exact_or_prefix = [
+        "안녕", "반가", "하이", "hello", "hi", "날씨", "비오", "기온", "미세먼지", "점심", "저녁",
+        "식사", "배고파", "힘들", "지쳐", "번아웃", "우울", "심심", "고마워", "감사"
+    ]
+    if any(p in low for p in bypass_exact_or_prefix):
+        return False
+
+    # 2. 일반 커리어/신입 어필/공부 방향 질문 (RAG Bypass -> 시니어 페르소나 직통 답변)
+    general_career_patterns = [
+        "신입", "비전공", "취업", "진로", "어필", "포트폴리오", "자소서", "이력서", "면접관에게 어떤",
+        "어떤 점을 어필", "어떤 점을", "어떻게 준비", "막막", "방황", "모르겠", "뭐부터", "어떤걸 해야",
+        "무엇을 해야", "떨려", "긴장", "불안", "멘탈", "마인드셋", "공부 방법", "공부 순서"
+    ]
+    # 특정 최신 기술 이슈 키워드가 포함되지 않은 상태에서 일반 커리어 키워드가 들어있으면 바이패스
+    tech_keywords = [
+        "k8s", "쿠버네티스", "docker", "도커", "aws", "gcp", "azure", "cve", "취약점", "보안사고",
+        "침해", "제로트러스트", "llm", "rag", "kafka", "카프카", "redis", "레디스", "istio", "트렌드",
+        "동향", "기사", "뉴스", "이슈", "아키텍처", "finops", "graviton", "spot", "vllm", "sbom"
+    ]
+    has_tech = any(tk in low for tk in tech_keywords)
+
+    if any(gp in low for gp in general_career_patterns) and not has_tech:
+        return False
+
+    # 3. 기술 키워드가 있거나, 최신 이슈/트렌드 질문인 경우만 RAG 적용
+    return has_tech
+
+def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
+    """
+    내부 저장된 jobs_and_trends.json 또는 news.json에서 쿼리와 가장 연관성 높은 아티클을 검색
+    """
+    if not should_perform_rag(query):
+        return []
+
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_files = [
         os.path.join(base_dir, "jobs_and_trends.json"),
@@ -500,10 +546,6 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
     }
     keywords = [k for k in query_tokens if k not in stopwords]
 
-    daily_weather_patterns = ["날씨", "기온", "비오", "맑", "미세먼지", "안녕", "반가", "하이", "모르겠", "막막", "방황", "어떤걸"]
-    if any(p in query.lower() for p in daily_weather_patterns):
-        return []
-
     if not keywords:
         return []
 
@@ -530,6 +572,7 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
                 matched_kws += 1
                 score += kw_score
 
+        # 최소 임계값: 핵심 키워드가 제목/태그에 명확히 부합하는 경우만 채택 (유사도 7점 이상)
         if score >= 7 and matched_kws >= 1:
             scored_articles.append((score, item))
 
@@ -675,8 +718,11 @@ async def chat_with_mentor(
         if len(session_store[sid][room_id]["messages"]) == 0:
             session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
 
-    # 1. RAG 기사 검색
-    retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
+    # 1. Intent Routing 기반 선택적 RAG 기사 검색
+    retrieved_articles = []
+    if should_perform_rag(user_msg, req.context_topic):
+        retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
+
     rag_context_snippets = []
     referenced_meta = []
 
@@ -696,7 +742,7 @@ async def chat_with_mentor(
             "insight": insight
         })
 
-    # 2. Gemini API 호출
+    # 2. Gemini API 호출 또는 시니어 면접관 페르소나 자연스러운 답변 생성
     reply_text = ""
     model_name = ""
     prompt_tokens = 0
@@ -757,57 +803,48 @@ async def chat_with_mentor(
         except Exception as e:
             print(f"Gemini API 호출 에러: {e}")
 
+    # 3. 비상 오프라인 폴백 (API 통신 불가 시에만 자연스러운 시니어 멘토 조언 생성)
     if not reply_text:
-        # 폴백 모드 (시니어 멘토 내장 엔진)
         low = user_msg.lower()
-        rag_note = ""
-        if referenced_meta:
-            rag_note = f"\n\n📰 **관련 최신 이슈 참조:** [{referenced_meta[0]['title']}]({referenced_meta[0]['link']})\n> *{referenced_meta[0]['insight']}*"
-
-        if any(k in low for k in ["k8s", "쿠버네티스", "pod", "파드", "docker", "도커", "컨테이너"]):
+        if any(k in low for k in ["날씨", "비오", "맑", "기온", "미세먼지"]):
             reply_text = (
-                "💡 **[시니어 면접관 코칭: 컨테이너 & 쿠버네티스]**\n\n"
-                "컨테이너 질문에서는 **'가상화와의 격리 방식 차이', '장애 복구(Self-Healing)', '무중단 배포'**를 핵심으로 답변해야 합니다.\n\n"
-                "**1. 핵심 답변 포인트:**\n"
-                "- 도커는 Host 커널을 공유하며 Linux cgroups와 Namespaces를 통해 가볍게 격리합니다.\n"
-                "- 쿠버네티스는 Pod의 liveness/readiness probe를 통해 자율 복구하고 HPA로 스케일링을 보장합니다.\n\n"
-                "**2. 단골 꼬리 질문:**\n"
-                "- *'Pod가 CrashLoopBackOff 상태에 빠졌을 때 kubectl describe와 logs 디버깅 순서는?'*"
-                + rag_note
-            )
-            model_name = "TechPrep AI Mentor (Built-in) + RAG"
-        elif any(k in low for k in ["보안", "취약점", "cve", "제로트러스트", "인증", "jwt"]):
-            reply_text = (
-                "💡 **[시니어 면접관 코칭: 보안 및 침해사고 대응]**\n\n"
-                "보안 면접에서는 **'단일 방어선이 뚫렸을 때의 심층 방어(Defense in Depth)'** 관점으로 접근하는 것이 좋습니다.\n\n"
-                "**1. 핵심 답변 포인트:**\n"
-                "- 제로트러스트(Zero Trust)는 '내부망조차 신뢰하지 않는다(Never Trust, Always Verify)'는 원칙입니다.\n"
-                "- mTLS 암호화, 최소 권한 원칙 IAM, 불변 WORM 백업 정책을 결합한 사례를 설명하세요.\n\n"
-                "**2. 단골 꼬리 질문:**\n"
-                "- *'JWT Access Token 탈취 시 강제 만료(Revoke) 전략은?'*"
-                + rag_note
-            )
-            model_name = "TechPrep AI Mentor (Built-in) + RAG"
-        elif any(k in low for k in ["날씨", "비오", "맑", "기온", "미세먼지"]):
-            reply_text = (
-                "☀️ **[선배의 일상 톡톡: 날씨 & 리프레시]**\n\n"
-                "오늘 날씨가 궁금하셨군요! 바쁜 개발 공부와 취업 준비 중에도 가끔 창밖을 보며 가벼운 산책과 환기를 해주는 게 번아웃을 막는 최고의 비결이랍니다. 😊\n\n"
-                "오늘 하루도 맑고 상쾌한 기운 받으셔서, 막히는 코드나 복잡한 알고리즘도 시원하게 술술 풀리길 응원할게요!"
+                "안녕하세요! 오늘 날씨가 궁금하셨군요. 😊\n"
+                "제가 있는 데이터센터 안에서는 바깥 날씨를 직접 체감할 수는 없지만, 마음만큼은 상쾌하고 화창한 하루가 되셨으면 좋겠습니다!\n\n"
+                "취업 준비와 코딩 공부로 바쁘시겠지만, 가끔은 창밖도 보시고 가벼운 산책으로 환기하시는 것 잊지 마세요. 오늘도 힘내시길 응원합니다! ☀️"
             )
             model_name = "TechPrep AI Mentor (Daily Coach)"
+        elif any(k in low for k in ["신입", "어필", "취업", "비전공", "포트폴리오", "진로", "커리어"]):
+            reply_text = (
+                "안녕하세요! 신입 개발자 면접 준비로 고민이 많으시겠어요. 아주 중요한 핵심을 짚어 질문해 주셨네요. 😊\n\n"
+                "10년 차 면접관으로서 주니어분들을 뵐 때 가장 눈여겨보는 핵심 어필 포인트 3가지를 말씀드릴게요:\n\n"
+                "1. **탄탄한 CS 기본기와 원리에 대한 집요함**:\n"
+                "   - 단순히 프레임워크 사용법만 아는 것보다, '이 기술이 내부적으로 메모리나 네트워크에서 어떻게 작동하는지' 호기심을 갖고 파고든 경험을 보여주세요.\n\n"
+                "2. **실패와 디버깅 경험 (가장 강력한 스토리)**:\n"
+                "   - 'A 기능을 쉽게 완성했습니다'보다 '개발 중 난해한 에러를 만났을 때 가설을 세우고 로그를 분석해 해결한 과정'이 면접관을 가장 설레게 만듭니다.\n\n"
+                "3. **협업 태도와 코드 품질에 대한 진정성**:\n"
+                "   - 커밋 메시지 컨벤션, 동료와의 코드 리뷰, 가독성 높은 코드 작성 등 '함께 일하고 싶은 좋은 동료'로서의 기본기를 증명하는 것이 큰 차별점이 됩니다.\n\n"
+                "자신감을 가지세요! 본인의 치열했던 문제 해결 과정을 솔직하고 담백하게 들려주신다면 분명 좋은 결과가 있을 거예요. 💪"
+            )
+            model_name = "TechPrep AI Mentor (Career Coach)"
+        elif any(k in low for k in ["k8s", "쿠버네티스", "pod", "파드", "docker", "도커", "컨테이너"]):
+            reply_text = (
+                "컨테이너 및 쿠버네티스 장애 복구 전략에 대해 질문해 주셨네요! 👍\n\n"
+                "실무 면접에서는 다음 세 가지 관점으로 구조화하여 답변하시면 매우 좋은 평가를 받습니다:\n\n"
+                "1. **자가 치유(Self-Healing)와 프로브(Probe) 설계**:\n"
+                "   - Liveness Probe(프로세스 이상 시 컨테이너 재기동)와 Readiness Probe(준비 완료 전 트래픽 유입 차단)의 분리 설계 원리를 설명하세요.\n"
+                "2. **CrashLoopBackOff 단계별 디버깅 순서**:\n"
+                "   - `kubectl describe pod`로 이벤트 로그(OOMKilled 등) 확인 ➔ `kubectl logs --previous`로 직전 비정상 종료 스택트레이스 분석 ➔ 환경변수 및 ConfigMap/Secret 마운트 정합성 검증 순으로 설명합니다.\n"
+                "3. **무중단 롤링 업데이트 & 롤백 파이프라인**:\n"
+                "   - 배포 실패 시 `maxSurge`와 `maxUnavailable` 설정을 통한 가용성 유지 및 장애 시 자동 롤백(`rollout undo`) 전략을 강조하세요."
+            )
+            model_name = "TechPrep AI Mentor (Engineering Coach)"
         else:
             reply_text = (
-                f"💡 **[시니어 면접관 코칭]**\n\n"
-                f"**\"{user_msg}\"** 질문에 대해 면접관이 듣고 싶어하는 핵심 포인트를 안내해 드릴게요.\n\n"
-                "**1. 모범적인 STAR 답변 구조:**\n"
-                "- **Situation(상황)**: 어떤 기술적 요구사항 또는 문제였는지 명확히 정의합니다.\n"
-                "- **Task(목표)**: 달성해야 할 지표(TPS, Latency 등)를 제시합니다.\n"
-                "- **Action(행동)**: 대안 기술 중 왜 특정 기술을 선택했는지 근거를 밝힙니다.\n"
-                "- **Result(결과)**: 도입 후 성과와 트레이드오프를 솔직히 설명합니다."
-                + rag_note
+                "질문해 주신 내용에 대해 시니어 엔지니어 관점에서 답변드릴게요. 😊\n\n"
+                "기술 면접이나 실무 논의에서는 문제를 정의할 때 STAR(Situation-Task-Action-Result) 프레임워크로 전달하는 것이 가장 효과적입니다.\n\n"
+                "궁금하신 세부 아키텍처나 특정 상황에 대해 구체적으로 말씀해 주시면, 함께 깊이 있는 디버깅 포인트와 모범 답변 방향을 짚어드릴게요!"
             )
-            model_name = "TechPrep AI Mentor (Built-in) + RAG"
-
+            model_name = "TechPrep AI Mentor (Senior Coach)"
     # 토큰 추정치 (API에서 토큰이 0으로 반환된 경우 글자 수 기반 추정 1token ≈ 3~4chars)
     if total_tokens == 0:
         prompt_tokens = max(1, len(user_msg) // 3)
