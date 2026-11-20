@@ -57,7 +57,25 @@ SYSTEM_INSTRUCTION = (
     "4. 한국어로 정중하고 따뜻하며 생동감 있는 경어체로 대화해 줘."
 )
 
-# .env 파일이 있으면 환경 변수 로드
+def clean_key_string(val: Optional[str]) -> Optional[str]:
+    """API 키 문자열에서 앞뒤 따옴표, 공백, 줄바꿈(\r, \n) 등을 완벽히 정제합니다."""
+    if not val:
+        return None
+    cleaned = val.strip().strip('"').strip("'").strip().strip('\r').strip('\n').strip()
+    return cleaned if len(cleaned) > 5 else None
+
+def mask_key_string(key: Optional[str]) -> str:
+    """보안 마스킹: 앞 4자리와 뒤 3자리만 노출 (예: AIza...xyz, 길이 39)"""
+    if not key:
+        return "(NONE)"
+    if len(key) <= 8:
+        return f"*** (len={len(key)})"
+    return f"{key[:4]}...{key[-3:]} (len={len(key)})"
+
+# 1. 시스템 환경변수(Render 등)를 최우선으로 보존
+SYS_GEMINI_KEY = clean_key_string(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+
+# 2. .env 파일 로드 (단, 시스템 환경변수에 이미 값이 있으면 덮어쓰지 않음)
 env_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 if os.path.exists(env_file_path):
     try:
@@ -66,24 +84,50 @@ if os.path.exists(env_file_path):
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     k, v = line.split("=", 1)
-                    os.environ[k.strip()] = v.strip().strip('"').strip("'")
+                    k_clean = k.strip()
+                    v_clean = clean_key_string(v)
+                    # 시스템 환경변수에 이미 세팅되어 있다면 .env의 과거 값으로 덮어쓰기 방지
+                    if k_clean not in os.environ or not os.environ[k_clean].strip():
+                        if v_clean:
+                            os.environ[k_clean] = v_clean
     except Exception as e:
         print(f"Failed to load .env: {e}")
 
-try:
-    from google import genai
-    from google.genai import types
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if api_key:
-        GEMINI_CLIENT = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
-        GEMINI_KEY_STATUS = "ACTIVE"
-        print("✅ Gemini API Client Initialized successfully with v1beta.")
-    else:
-        GEMINI_KEY_STATUS = "UNCONFIGURED"
-        print("ℹ️ GEMINI_API_KEY / GOOGLE_API_KEY not found. Fallback mock mentor engine activated.")
-except Exception as e:
-    GEMINI_KEY_STATUS = "ERROR"
-    print(f"⚠️ Gemini SDK Init failed: {e}. Fallback mock mentor engine activated.")
+def get_effective_gemini_api_key() -> tuple[Optional[str], str]:
+    """
+    최신 유효 GEMINI_API_KEY를 실시간으로 가져오며, 출처와 마스킹 정보를 함께 반환합니다.
+    우선순위:
+    1. os.environ['GEMINI_API_KEY']
+    2. os.environ['GOOGLE_API_KEY']
+    3. SYS_GEMINI_KEY (시작 시점 보존값)
+    """
+    k1 = clean_key_string(os.environ.get("GEMINI_API_KEY"))
+    if k1:
+        return k1, "os.environ['GEMINI_API_KEY']"
+    k2 = clean_key_string(os.environ.get("GOOGLE_API_KEY"))
+    if k2:
+        return k2, "os.environ['GOOGLE_API_KEY']"
+    if SYS_GEMINI_KEY:
+        return SYS_GEMINI_KEY, "System Startup Environment"
+    return None, "Not Found"
+
+# 시작 시점 키 진단 로그 (마스킹 필수)
+startup_key, startup_src = get_effective_gemini_api_key()
+if startup_key:
+    GEMINI_KEY_STATUS = "ACTIVE"
+    print(f"🔑 [Gemini Key Diagnostic] Key detected from [{startup_src}]: {mask_key_string(startup_key)}")
+else:
+    GEMINI_KEY_STATUS = "UNCONFIGURED"
+    print("ℹ️ [Gemini Key Diagnostic] GEMINI_API_KEY / GOOGLE_API_KEY not found.")
+
+def get_gemini_sdk_client(api_key: str):
+    """요청 시점의 최신 유효 키를 바탕으로 Client를 생성하거나 재사용합니다."""
+    try:
+        from google import genai
+        return genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
+    except Exception as e:
+        print(f"⚠️ [SDK Client Init Error]: {e}")
+        return None
 
 # Docker SDK 연동 시도 (Docker 데몬 없을 경우 Mock 시뮬레이터로 자동 폴백)
 DOCKER_AVAILABLE = False
@@ -214,17 +258,20 @@ async def startup_event():
 def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str], Optional[str], int, int, int]:
     """
     Gemini API를 호출하여 (reply_text, model_name, prompt_tokens, completion_tokens, total_tokens)을 반환합니다.
-    1순위: google-genai SDK v1beta
-    2순위: Google AI Studio v1beta REST API 직접 호출 (SDK 내부 세팅 문제 완전 방어)
+    1순위: google-genai SDK v1beta (동적 클라이언트)
+    2순위: Google AI Studio v1beta REST API 직접 호출 (쿼리 파라미터 + x-goog-api-key 헤더 이중 전달)
     """
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key, key_source = get_effective_gemini_api_key()
     if not api_key:
+        print("⚠️ [Gemini Call Blocked] No effective API key found in environment or .env.")
         return None, None, 0, 0, 0
 
+    print(f"🚀 [Gemini Calling] Source: [{key_source}], Masked Key: {mask_key_string(api_key)}")
     candidate_models = ["gemini-2.5-flash", "gemini-3.5-flash-lite"]
 
-    # 1. SDK 호출 시도
-    if GEMINI_CLIENT:
+    # 1. SDK 호출 시도 (최신 정제 키로 클라이언트 생성)
+    sdk_client = get_gemini_sdk_client(api_key)
+    if sdk_client:
         from google.genai import types
         for m in candidate_models:
             try:
@@ -232,7 +279,7 @@ def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str]
                     system_instruction=system_prompt,
                     temperature=0.7,
                 )
-                response = GEMINI_CLIENT.models.generate_content(
+                response = sdk_client.models.generate_content(
                     model=m,
                     contents=full_prompt,
                     config=config
@@ -245,15 +292,20 @@ def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str]
                         p_tok = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
                         c_tok = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
                         t_tok = getattr(response.usage_metadata, 'total_token_count', 0) or (p_tok + c_tok)
+                    print(f"✅ [SDK Success] Model {m} generated response successfully.")
                     return response.text, m, p_tok, c_tok, t_tok
             except Exception as e:
                 print(f"[SDK Failed] model {m}: {e}")
 
-    # 2. REST API 직접 호출 시도 (가장 견고함)
+    # 2. REST API 직접 호출 시도 (쿼리 키 및 x-goog-api-key 헤더 이중 부여)
     import requests
     for m in candidate_models:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key
+            }
             payload = {
                 "systemInstruction": {
                     "parts": [{"text": system_prompt}]
@@ -265,7 +317,7 @@ def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str]
                     "temperature": 0.7
                 }
             }
-            res = requests.post(url, json=payload, timeout=25)
+            res = requests.post(url, headers=headers, json=payload, timeout=25)
             if res.status_code == 200:
                 data = res.json()
                 candidates = data.get("candidates", [])
@@ -277,12 +329,12 @@ def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str]
                         p_tok = meta.get("promptTokenCount", 0)
                         c_tok = meta.get("candidatesTokenCount", 0)
                         t_tok = meta.get("totalTokenCount", p_tok + c_tok)
-                        print(f"✅ [REST API Success] model {m} responded successfully.")
+                        print(f"✅ [REST API Success] Model {m} responded successfully.")
                         return reply, m, p_tok, c_tok, t_tok
             else:
-                print(f"[REST Failed] model {m} HTTP {res.status_code}: {res.text[:120]}")
+                print(f"[REST Failed] Model {m} HTTP {res.status_code}: {res.text[:140]}")
         except Exception as ex:
-            print(f"[REST Exception] model {m}: {ex}")
+            print(f"[REST Exception] Model {m}: {ex}")
 
     return None, None, 0, 0, 0
 
