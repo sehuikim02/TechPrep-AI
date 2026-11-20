@@ -47,18 +47,14 @@ GEMINI_KEY_STATUS = "UNCONFIGURED"  # HEALTHY, INVALID, UNCONFIGURED
 
 SYSTEM_INSTRUCTION = (
     "너는 IT 대기업의 10년 차 시니어 DevOps / 백엔드 엔지니어이자 다정하고 지혜로운 AI 커리어 & 기술 멘토야.\n"
-    "1. [일상 대화, 스몰토크 & 감정 공감]:\n"
-    "   - '오늘 날씨 어때?', '점심 뭐 먹을까?', '힘들다', '안녕' 같은 일상 대화나 스몰토크가 들어오면 유쾌하고 친근한 선배처럼 자연스럽게 대답해 줘.\n"
-    "   - 날씨나 일상 질문에도 막힘없이 편안하게 답변하고, 따뜻한 응원을 덧붙여 줘.\n"
+    "1. [일상 대화, 인사 & 스몰토크]:\n"
+    "   - '안녕', '안녕?', '반가워', '오늘 날씨 어때?', '점심 뭐 먹을까?', '고마워', '힘들다' 같은 일상 대화에는 다정하고 자연스러운 선배처럼 편안하게 대화해 줘.\n"
+    "   - 일상 대화나 인사에 대해 절대로 STAR 프레임워크, CS 기본기, 모범 면접 답변 같은 딱딱한 템플릿을 억지로 꺼내지 마.\n"
     "2. [진로 / 취업 / 고민 상담]:\n"
-    "   - '어떤 걸 해야 할지 모르겠어요', '신입이라 어떤 걸 어필해야 할까?', '비전공자인데 취업할 수 있을까?', '포트폴리오는 어떻게 꾸밀까?' 같은 막막함이나 진로 고민이 들어오면, 선배의 시선에서 깊이 공감하고 현실적이며 구체적인 액션 플랜(공부 방향, 관심 분야 좁히기, 작은 프로젝트 시작 등)을 따뜻하게 조언해 줘.\n"
-    "   - 신입 개발자에게는 완성된 화려함보다 '탄탄한 CS 기본기', '문제 해결 집요함(디버깅 스토리)', '코드 품질과 테스트에 대한 태도', '팀원과의 원활한 소통/협업 능력'이 핵심 어필 포인트임을 친절하게 짚어줘.\n"
-    "3. [RAG 실시간 이슈 활용]:\n"
-    "   - 질문이 실제 기술 트렌드나 IT 동향과 관련이 있고 컨텍스트(RAG Context)가 주어지면 적극적으로 인용하여 최신 업계 트렌드와 연결해 줘.\n"
-    "   - 일상 대화나 순수 고민 상담, 날씨 질문 등 기사와 무관한 내용일 때는 절대 기사나 RAG 내용을 억지로 언급하지 말고 질문자의 대화에만 온전히 집중해 줘.\n"
-    "4. [기술 면접 코칭]:\n"
-    "   - 구체적인 기술 질문이 들어오면 주니어 눈높이에 맞춰 명쾌하게 원리를 설명하고, 실무 관점의 핵심 포인트 및 면접관이 던질 수 있는 꼬리 질문을 덧붙여 줘.\n"
-    "5. 한국어로 정중하고 따뜻하며 생동감 있는 경어체로 대화해 줘."
+    "   - 신입 취업 준비나 포트폴리오 고민, 진로 방황에 대해 물어보면 선배의 시선에서 깊이 공감하고 현실적인 3대 어필 포인트(CS 기본기, 디버깅 스토리, 협업 태도)를 따뜻하게 조언해 줘.\n"
+    "3. [기술 / 도메인 / RAG 질문]:\n"
+    "   - 쿠버네티스, 클라우드, 인프라, 보안, 아키텍처 등 실무 기술 질문이나 RAG Context가 제공되었을 때만 전문적인 엔지니어링 분석과 실전 면접 포인트를 제공해 줘.\n"
+    "4. 한국어로 정중하고 따뜻하며 생동감 있는 경어체로 대화해 줘."
 )
 
 # .env 파일이 있으면 환경 변수 로드
@@ -213,6 +209,82 @@ async def autonomous_healing_worker():
 async def startup_event():
     init_db()
     asyncio.create_task(autonomous_healing_worker())
+
+
+def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str], Optional[str], int, int, int]:
+    """
+    Gemini API를 호출하여 (reply_text, model_name, prompt_tokens, completion_tokens, total_tokens)을 반환합니다.
+    1순위: google-genai SDK v1beta
+    2순위: Google AI Studio v1beta REST API 직접 호출 (SDK 내부 세팅 문제 완전 방어)
+    """
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return None, None, 0, 0, 0
+
+    candidate_models = ["gemini-2.5-flash", "gemini-3.5-flash-lite"]
+
+    # 1. SDK 호출 시도
+    if GEMINI_CLIENT:
+        from google.genai import types
+        for m in candidate_models:
+            try:
+                config = types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.7,
+                )
+                response = GEMINI_CLIENT.models.generate_content(
+                    model=m,
+                    contents=full_prompt,
+                    config=config
+                )
+                if response and response.text:
+                    p_tok = 0
+                    c_tok = 0
+                    t_tok = 0
+                    if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                        p_tok = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
+                        c_tok = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
+                        t_tok = getattr(response.usage_metadata, 'total_token_count', 0) or (p_tok + c_tok)
+                    return response.text, m, p_tok, c_tok, t_tok
+            except Exception as e:
+                print(f"[SDK Failed] model {m}: {e}")
+
+    # 2. REST API 직접 호출 시도 (가장 견고함)
+    import requests
+    for m in candidate_models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+            payload = {
+                "systemInstruction": {
+                    "parts": [{"text": system_prompt}]
+                },
+                "contents": [
+                    {"parts": [{"text": full_prompt}]}
+                ],
+                "generationConfig": {
+                    "temperature": 0.7
+                }
+            }
+            res = requests.post(url, json=payload, timeout=25)
+            if res.status_code == 200:
+                data = res.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts and "text" in parts[0]:
+                        reply = parts[0]["text"]
+                        meta = data.get("usageMetadata", {})
+                        p_tok = meta.get("promptTokenCount", 0)
+                        c_tok = meta.get("candidatesTokenCount", 0)
+                        t_tok = meta.get("totalTokenCount", p_tok + c_tok)
+                        print(f"✅ [REST API Success] model {m} responded successfully.")
+                        return reply, m, p_tok, c_tok, t_tok
+            else:
+                print(f"[REST Failed] model {m} HTTP {res.status_code}: {res.text[:120]}")
+        except Exception as ex:
+            print(f"[REST Exception] model {m}: {ex}")
+
+    return None, None, 0, 0, 0
 
 # --- Auth Helper Dependencies ---
 def get_client_ip(request: Request) -> str:
@@ -469,44 +541,52 @@ async def inject_fault(req: ChaosRequest):
 
 # --- RAG (Retrieval-Augmented Generation) Helper ---
 # --- Intelligent Intent Routing for RAG ---
-def should_perform_rag(query: str, context_topic: Optional[str] = None) -> bool:
+def determine_intent_routing(query: str, context_topic: Optional[str] = None) -> tuple[bool, str]:
     """
-    질문 유형을 분석하여 RAG 검색이 실제로 필요한 도메인/기술 이슈인지 판별합니다.
-    - 일상, 잡담, 날씨, 단순 상식, 일반 커리어 고민, 일반 신입 면접 조언 등은 False (Bypass)
-    - 최신 IT 트렌드, 보안(CVE), 클라우드 아키텍처, 인프라, k8s, AI/ML 기술 이슈는 True
+    질문 유형을 분석하여 (is_rag_required: bool, route_reason: str)을 반환합니다.
+    - [경로 A] RAG Bypass: 인사/날씨/잡담/일상, 일반 신입 어필 및 진로 상담
+    - [경로 B] RAG Required: 클라우드, 쿠버네티스, 보안(CVE), IT 트렌드 등 기사 검색이 필요한 기술 질문
     """
     if context_topic and context_topic.strip():
-        return True
+        return True, "context_topic_provided"
 
     low = query.lower().strip()
 
-    # 1. 명백한 일상/스몰토크/일반 멘토링 패턴 (RAG Bypass)
-    bypass_exact_or_prefix = [
-        "안녕", "반가", "하이", "hello", "hi", "날씨", "비오", "기온", "미세먼지", "점심", "저녁",
-        "식사", "배고파", "힘들", "지쳐", "번아웃", "우울", "심심", "고마워", "감사"
+    # 1. 일상/스몰토크/인사 패턴 (무조건 Bypass)
+    daily_patterns = [
+        "안녕", "반가", "하이", "hello", "hi", "날씨", "비오", "맑", "기온", "미세먼지",
+        "점심", "저녁", "식사", "배고", "힘들", "지쳐", "번아웃", "우울", "심심", "고마", "감사",
+        "누구", "자기소개", "소개해", "뭐해", "뭐야"
     ]
-    if any(p in low for p in bypass_exact_or_prefix):
-        return False
+    if any(p in low for p in daily_patterns):
+        return False, "daily_smalltalk_bypass"
 
-    # 2. 일반 커리어/신입 어필/공부 방향 질문 (RAG Bypass -> 시니어 페르소나 직통 답변)
-    general_career_patterns = [
+    # 2. 일반 커리어/신입 어필/공부 방향 질문 (무조건 Bypass -> 시니어 페르소나 직통 답변)
+    career_patterns = [
         "신입", "비전공", "취업", "진로", "어필", "포트폴리오", "자소서", "이력서", "면접관에게 어떤",
         "어떤 점을 어필", "어떤 점을", "어떻게 준비", "막막", "방황", "모르겠", "뭐부터", "어떤걸 해야",
         "무엇을 해야", "떨려", "긴장", "불안", "멘탈", "마인드셋", "공부 방법", "공부 순서"
     ]
-    # 특정 최신 기술 이슈 키워드가 포함되지 않은 상태에서 일반 커리어 키워드가 들어있으면 바이패스
-    tech_keywords = [
+    tech_domain_keywords = [
         "k8s", "쿠버네티스", "docker", "도커", "aws", "gcp", "azure", "cve", "취약점", "보안사고",
         "침해", "제로트러스트", "llm", "rag", "kafka", "카프카", "redis", "레디스", "istio", "트렌드",
-        "동향", "기사", "뉴스", "이슈", "아키텍처", "finops", "graviton", "spot", "vllm", "sbom"
+        "동향", "기사", "뉴스", "이슈", "아키텍처", "finops", "graviton", "spot", "vllm", "sbom",
+        "liveness", "readiness", "probe", "hpa", "ingress", "alb"
     ]
-    has_tech = any(tk in low for tk in tech_keywords)
+    has_tech = any(tk in low for tk in tech_domain_keywords)
 
-    if any(gp in low for gp in general_career_patterns) and not has_tech:
-        return False
+    if any(cp in low for cp in career_patterns) and not has_tech:
+        return False, "general_career_advice_bypass"
 
-    # 3. 기술 키워드가 있거나, 최신 이슈/트렌드 질문인 경우만 RAG 적용
-    return has_tech
+    if has_tech:
+        return True, "tech_domain_issue_match"
+
+    # 기본적으로 특정 기술 키워드가 없는 질문은 자연스러운 대화로 Bypass
+    return False, "general_chat_bypass"
+
+def should_perform_rag(query: str, context_topic: Optional[str] = None) -> bool:
+    use_rag, _ = determine_intent_routing(query, context_topic)
+    return use_rag
 
 def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
     """
@@ -599,6 +679,8 @@ class ChatResponse(BaseModel):
     model: str
     created_at: str
     referenced_articles: Optional[List[Dict]] = None
+    rag_used: bool = False
+    route_reason: Optional[str] = None
 
 class CreateRoomRequest(BaseModel):
     title: Optional[str] = "새 대화"
@@ -718,150 +800,86 @@ async def chat_with_mentor(
         if len(session_store[sid][room_id]["messages"]) == 0:
             session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
 
-    # 1. Intent Routing 기반 선택적 RAG 기사 검색
-    retrieved_articles = []
-    if should_perform_rag(user_msg, req.context_topic):
-        retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
+    # 1. 명확한 의도 분석 (Intent Routing)
+    use_rag, route_reason = determine_intent_routing(user_msg, req.context_topic)
+    print(f"🧭 [Intent Router] message='{user_msg}' ➔ use_rag={use_rag}, reason='{route_reason}'")
 
+    retrieved_articles = []
     rag_context_snippets = []
     referenced_meta = []
 
-    for art in retrieved_articles:
-        title = art.get("title", "")
-        insight = art.get("interview_insight", "")
-        summary = art.get("summary", "")
-        link = art.get("link", "")
-        source = art.get("source", "")
-        rag_context_snippets.append(
-            f"- 기사 제목: {title} ({source})\n  요약: {summary}\n  실무 핵심 인사이트: {insight}"
+    if use_rag:
+        retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
+        for art in retrieved_articles:
+            title = art.get("title", "")
+            insight = art.get("interview_insight", "")
+            summary = art.get("summary", "")
+            link = art.get("link", "")
+            source = art.get("source", "")
+            rag_context_snippets.append(
+                f"- 기사 제목: {title} ({source})\n  요약: {summary}\n  실무 핵심 인사이트: {insight}"
+            )
+            referenced_meta.append({
+                "title": title,
+                "link": link,
+                "source": source,
+                "insight": insight
+            })
+
+    # 2. 프롬프트 구성 및 Gemini API 호출
+    prompt_parts = []
+    if req.context_topic:
+        prompt_parts.append(f"[면접 주제/관련 기사]: {req.context_topic}")
+
+    if rag_context_snippets:
+        prompt_parts.append(
+            "[시스템 수집 최신 IT 실무 이슈 및 인사이트 (RAG Context)]:\n" +
+            "\n".join(rag_context_snippets) +
+            "\n(위 최신 업계 동향 및 실무 인사이트를 답변에 자연스럽게 녹여내어 신뢰성을 높여주세요.)"
         )
-        referenced_meta.append({
-            "title": title,
-            "link": link,
-            "source": source,
-            "insight": insight
-        })
 
-    # 2. Gemini API 호출 또는 시니어 면접관 페르소나 자연스러운 답변 생성
-    reply_text = ""
-    model_name = ""
-    prompt_tokens = 0
-    completion_tokens = 0
-    total_tokens = 0
+    # 이전 대화 맥락
+    prev_msgs = session_store[sid][room_id]["messages"][-4:]
+    if prev_msgs:
+        history_str = "\n".join([f"{'지원자' if m['role']=='user' else '면접관'}: {m['content']}" for m in prev_msgs])
+        prompt_parts.append(f"[이전 대화 맥락]:\n{history_str}")
 
-    if GEMINI_CLIENT:
-        try:
-            from google.genai import types
-            prompt_parts = []
-            if req.context_topic:
-                prompt_parts.append(f"[면접 주제/관련 기사]: {req.context_topic}")
+    prompt_parts.append(f"주니어 지원자: {user_msg}")
+    full_prompt = "\n\n".join(prompt_parts)
 
-            if rag_context_snippets:
-                prompt_parts.append(
-                    "[시스템 수집 최신 IT 실무 이슈 및 인사이트 (RAG Context)]:\n" +
-                    "\n".join(rag_context_snippets) +
-                    "\n(위 최신 업계 동향 및 실무 인사이트를 답변에 자연스럽게 녹여내어 신뢰성을 높여주세요.)"
-                )
+    reply_text, used_model, prompt_tokens, completion_tokens, total_tokens = call_gemini_api(
+        full_prompt=full_prompt,
+        system_prompt=SYSTEM_INSTRUCTION
+    )
 
-            prev_msgs = session_store[sid][room_id]["messages"][-4:]
-            if prev_msgs:
-                history_str = "\n".join([f"{'지원자' if m['role']=='user' else '면접관'}: {m['content']}" for m in prev_msgs])
-                prompt_parts.append(f"[이전 대화 맥락]:\n{history_str}")
+    if reply_text:
+        model_name = f"Google Gemini ({used_model})" + (" + RAG" if referenced_meta else "")
+    else:
+        # Gemini API 호출 자체가 실패한 경우 (하드코딩 앵무새 문구 금지, 실제 장애 명시)
+        reply_text = (
+            "⚠️ 죄송합니다. AI 모델(Gemini API) 호출 중 일시적인 네트워크 또는 할당량 오류가 발생했습니다.\n"
+            "잠시 후 다시 시도해 주시거나 관리자에게 문의해 주세요."
+        )
+        model_name = "Gemini Service Unavailable"
+        print(f"❌ [Gemini Error] All candidate models failed to generate response for message: {user_msg}")
 
-            prompt_parts.append(f"주니어 지원자: {user_msg}")
-            full_prompt = "\n\n".join(prompt_parts)
-
-            config = types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.7,
-            )
-
-            response = None
-            used_model = None
-            for m in [GEMINI_MODEL] + [mod for mod in GEMINI_FALLBACK_MODELS if mod != GEMINI_MODEL]:
-                try:
-                    response = GEMINI_CLIENT.models.generate_content(
-                        model=m,
-                        contents=full_prompt,
-                        config=config
-                    )
-                    if response and response.text:
-                        used_model = m
-                        reply_text = response.text
-                        
-                        # Usage metadata 추출
-                        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                            prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0) or 0
-                            completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0) or 0
-                            total_tokens = getattr(response.usage_metadata, 'total_token_count', 0) or (prompt_tokens + completion_tokens)
-                        break
-                except Exception as model_err:
-                    print(f"Model {m} failed: {model_err}")
-
-            if reply_text:
-                model_name = f"Google Gemini ({used_model})" + (" + RAG" if rag_context_snippets else "")
-        except Exception as e:
-            print(f"Gemini API 호출 에러: {e}")
-
-    # 3. 비상 오프라인 폴백 (API 통신 불가 시에만 자연스러운 시니어 멘토 조언 생성)
-    if not reply_text:
-        low = user_msg.lower()
-        if any(k in low for k in ["날씨", "비오", "맑", "기온", "미세먼지"]):
-            reply_text = (
-                "안녕하세요! 오늘 날씨가 궁금하셨군요. 😊\n"
-                "제가 있는 데이터센터 안에서는 바깥 날씨를 직접 체감할 수는 없지만, 마음만큼은 상쾌하고 화창한 하루가 되셨으면 좋겠습니다!\n\n"
-                "취업 준비와 코딩 공부로 바쁘시겠지만, 가끔은 창밖도 보시고 가벼운 산책으로 환기하시는 것 잊지 마세요. 오늘도 힘내시길 응원합니다! ☀️"
-            )
-            model_name = "TechPrep AI Mentor (Daily Coach)"
-        elif any(k in low for k in ["신입", "어필", "취업", "비전공", "포트폴리오", "진로", "커리어"]):
-            reply_text = (
-                "안녕하세요! 신입 개발자 면접 준비로 고민이 많으시겠어요. 아주 중요한 핵심을 짚어 질문해 주셨네요. 😊\n\n"
-                "10년 차 면접관으로서 주니어분들을 뵐 때 가장 눈여겨보는 핵심 어필 포인트 3가지를 말씀드릴게요:\n\n"
-                "1. **탄탄한 CS 기본기와 원리에 대한 집요함**:\n"
-                "   - 단순히 프레임워크 사용법만 아는 것보다, '이 기술이 내부적으로 메모리나 네트워크에서 어떻게 작동하는지' 호기심을 갖고 파고든 경험을 보여주세요.\n\n"
-                "2. **실패와 디버깅 경험 (가장 강력한 스토리)**:\n"
-                "   - 'A 기능을 쉽게 완성했습니다'보다 '개발 중 난해한 에러를 만났을 때 가설을 세우고 로그를 분석해 해결한 과정'이 면접관을 가장 설레게 만듭니다.\n\n"
-                "3. **협업 태도와 코드 품질에 대한 진정성**:\n"
-                "   - 커밋 메시지 컨벤션, 동료와의 코드 리뷰, 가독성 높은 코드 작성 등 '함께 일하고 싶은 좋은 동료'로서의 기본기를 증명하는 것이 큰 차별점이 됩니다.\n\n"
-                "자신감을 가지세요! 본인의 치열했던 문제 해결 과정을 솔직하고 담백하게 들려주신다면 분명 좋은 결과가 있을 거예요. 💪"
-            )
-            model_name = "TechPrep AI Mentor (Career Coach)"
-        elif any(k in low for k in ["k8s", "쿠버네티스", "pod", "파드", "docker", "도커", "컨테이너"]):
-            reply_text = (
-                "컨테이너 및 쿠버네티스 장애 복구 전략에 대해 질문해 주셨네요! 👍\n\n"
-                "실무 면접에서는 다음 세 가지 관점으로 구조화하여 답변하시면 매우 좋은 평가를 받습니다:\n\n"
-                "1. **자가 치유(Self-Healing)와 프로브(Probe) 설계**:\n"
-                "   - Liveness Probe(프로세스 이상 시 컨테이너 재기동)와 Readiness Probe(준비 완료 전 트래픽 유입 차단)의 분리 설계 원리를 설명하세요.\n"
-                "2. **CrashLoopBackOff 단계별 디버깅 순서**:\n"
-                "   - `kubectl describe pod`로 이벤트 로그(OOMKilled 등) 확인 ➔ `kubectl logs --previous`로 직전 비정상 종료 스택트레이스 분석 ➔ 환경변수 및 ConfigMap/Secret 마운트 정합성 검증 순으로 설명합니다.\n"
-                "3. **무중단 롤링 업데이트 & 롤백 파이프라인**:\n"
-                "   - 배포 실패 시 `maxSurge`와 `maxUnavailable` 설정을 통한 가용성 유지 및 장애 시 자동 롤백(`rollout undo`) 전략을 강조하세요."
-            )
-            model_name = "TechPrep AI Mentor (Engineering Coach)"
-        else:
-            reply_text = (
-                "질문해 주신 내용에 대해 시니어 엔지니어 관점에서 답변드릴게요. 😊\n\n"
-                "기술 면접이나 실무 논의에서는 문제를 정의할 때 STAR(Situation-Task-Action-Result) 프레임워크로 전달하는 것이 가장 효과적입니다.\n\n"
-                "궁금하신 세부 아키텍처나 특정 상황에 대해 구체적으로 말씀해 주시면, 함께 깊이 있는 디버깅 포인트와 모범 답변 방향을 짚어드릴게요!"
-            )
-            model_name = "TechPrep AI Mentor (Senior Coach)"
-    # 토큰 추정치 (API에서 토큰이 0으로 반환된 경우 글자 수 기반 추정 1token ≈ 3~4chars)
-    if total_tokens == 0:
+    # 토큰 추정치
+    if total_tokens == 0 and reply_text:
         prompt_tokens = max(1, len(user_msg) // 3)
         completion_tokens = max(1, len(reply_text) // 3)
         total_tokens = prompt_tokens + completion_tokens
 
-    # 성공 감사 로그 및 토큰 사용량 기록
+    # 감사 로그 기록
     record_usage_log(
         username=username,
         ip=client_ip,
         action="CHAT_API",
-        status="SUCCESS",
+        status="SUCCESS" if used_model else "ERROR",
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
         model=model_name,
-        details=f"Chat response generated for room {room_id}"
+        details=f"route={route_reason}, rag={bool(referenced_meta)}"
     )
 
     # 히스토리 저장
@@ -886,7 +904,9 @@ async def chat_with_mentor(
         reply=reply_text,
         model=model_name,
         created_at=now_iso,
-        referenced_articles=referenced_meta
+        referenced_articles=referenced_meta,
+        rag_used=bool(referenced_meta),
+        route_reason=route_reason
     )
 
 # --- Frontend Static Files Serving ---

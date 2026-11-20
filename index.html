@@ -1668,6 +1668,8 @@
                 let reply = null;
                 let model = null;
                 let references = null;
+                let ragUsed = false;
+                let routeReason = "";
 
                 // 1. Render 또는 로컬 백엔드 호출 시도 (RAG & Session 헤더 포함)
                 try {
@@ -1694,17 +1696,20 @@
                         reply = data.reply;
                         model = data.model;
                         references = data.referenced_articles;
+                        ragUsed = !!data.rag_used;
+                        routeReason = data.route_reason || "";
                     } else if (response.status === 403) {
                         // 권한 없음 에러 처리: pending 또는 blocked 또는 미로그인
                         const errData = await response.json().catch(() => ({}));
                         const errMsg = errData.detail || '⚠️ GEMINI API 키 사용 권한이 없습니다. 관리자 승인이 필요합니다.';
                         removeLoadingSkeleton(loadingId);
-                        appendChatMessage('model', `${errMsg}\n\n*(상단 로그인 버튼을 통해 로그인하거나 관리자에게 API 키 사용 승인을 요청해 주세요.)*`, '권한 제어 엔진 (Security Policy)');
+                        appendChatMessage('model', `${errMsg}\n\n*(상단 로그인 버튼을 통해 로그인하거나 관리자에게 API 키 사용 승인을 요청해 주세요.)*`, '권한 제어 엔진 (Security Policy)', null, false);
                         if (currentRoom) {
                             currentRoom.messages.push({ 
                                 role: 'model', 
                                 content: errMsg, 
                                 model: '권한 제어 엔진', 
+                                rag_used: false,
                                 timestamp: Date.now() 
                             });
                             saveChatRooms();
@@ -1722,10 +1727,11 @@
                     reply = clientReply.reply;
                     model = clientReply.model;
                     references = clientReply.references;
+                    ragUsed = !!clientReply.rag_used;
                 }
 
                 removeLoadingSkeleton(loadingId);
-                appendChatMessage('model', reply, model, references);
+                appendChatMessage('model', reply, model, references, ragUsed);
 
                 // 응답 히스토리 저장
                 if (currentRoom) {
@@ -1734,6 +1740,7 @@
                         content: reply, 
                         model: model, 
                         references: references,
+                        rag_used: ragUsed,
                         timestamp: Date.now() 
                     });
                     saveChatRooms();
@@ -1750,20 +1757,12 @@
 
         // GitHub Pages 전용 클라이언트 사이드 RAG + 시니어 면접관 지능형 응답 엔진
         function generateClientMentorReply(userMsg, ragArticles = []) {
-            // 1. 인사 및 스몰토크
-            if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello') || low.includes('hi')) {
-                return {
-                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 멘토입니다.<br><br>" +
-                           "취업 준비와 기술 공부는 잘 되어가고 계신가요? 기술 질문(K8s, Docker, Cloud, AI 등)이나 포트폴리오/면접 고민, 혹은 가벼운 이야기라도 편하게 말씀해 주세요. 든든한 선배로서 함께 고민해 드릴게요!",
-                    model: "TechPrep AI Mentor (Daily Coach)",
-                    references: null
-                };
-            }
-
             const low = userMsg.toLowerCase();
             let referencesMeta = null;
             let ragSnippetHtml = "";
+            let ragUsed = false;
 
+            // RAG 기사 매핑
             if (ragArticles && ragArticles.length > 0) {
                 referencesMeta = ragArticles.map(a => ({
                     title: a.title,
@@ -1779,55 +1778,25 @@
                                  `</div>`;
             }
 
+            // 1. 인사 및 일상 스몰토크 (RAG 우회 / Bypass)
+            if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello') || low.includes('hi') || low.includes('고마') || low.includes('감사')) {
+                return {
+                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 멘토입니다.<br><br>" +
+                           "취업 준비와 기술 공부는 잘 되어가고 계신가요? 기술 질문(K8s, Docker, Cloud, 보안 등)이나 포트폴리오/면접 고민, 혹은 가벼운 이야기라도 편하게 말씀해 주세요. 든든한 선배로서 함께 고민해 드릴게요!",
+                    model: "TechPrep AI Mentor (Daily Coach)",
+                    references: null,
+                    rag_used: false
+                };
+            }
+
             if (low.includes('날씨') || low.includes('비오') || low.includes('기온') || low.includes('미세먼지')) {
                 return {
                     reply: "☀️ <strong>[선배의 일상 톡톡: 날씨 & 리프레시]</strong><br><br>" +
                            "오늘 날씨를 물어보셨네요! 바쁜 개발 공부와 취업 준비 중에도 가끔은 모니터에서 눈을 떼고 창밖을 보며 가벼운 스트레칭이나 산책을 해주는 게 정말 중요합니다. 😊<br><br>" +
                            "오늘 하루도 맑고 상쾌한 기운 듬뿍 받으셔서, 막혔던 에러나 복잡한 알고리즘도 시원하게 풀리길 바랄게요! 기술 질문이든 고민이든 언제든 편하게 말 걸어주세요.",
                     model: "TechPrep AI Mentor (Daily Coach)",
-                    references: null
-                };
-            }
-
-            if (low.includes('llm') || low.includes('rag') || low.includes('생성형') || low.includes('프롬프트') || low.includes('에이전트') || low.includes('agent')) {
-                return {
-                    reply: "🤖 <strong>[시니어 면접관 코칭: LLM & RAG 실무 경험 어필 가이드]</strong><br><br>" +
-                           "정말 트렌디하고 강력한 무기입니다! 면접관이 LLM/RAG 프로젝트를 볼 때 가장 관심 있게 보는 것은 '단순히 API를 호출해 봤는가'가 아니라, <strong>'LLM의 한계(비용, 지연 시간, 환각)를 시스템 아키텍처로 어떻게 극복했는가'</strong>입니다.<br><br>" +
-                           "<strong>1. 핵심 어필 포인트:</strong><br>" +
-                           "- <strong>환각(Hallucination) 방어</strong>: BM25 키워드 검색과 Dense 벡터 임베딩을 결합한 하이브리드 검색 파이프라인 및 Re-ranking 모델 적용 경험을 설명하세요.<br>" +
-                           "- <strong>비용 & 레이턴시 최적화</strong>: Redis Semantic Cache를 통한 반복 질의 응답 시간(Latency) 단축, 불필요한 토큰 비용 절감 사례를 수치와 함께 언급하세요.<br>" +
-                           "- <strong>데이터 청킹(Chunking) 전략</strong>: 문서 분할 시 문맥 손실을 막기 위해 Recursive Character Splitting이나 메타데이터 태깅을 고민했던 엔지니어링 과정을 어필하세요.<br><br>" +
-                           "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
-                           "• <em>'벡터 DB(Pinecone, pgvector 등)를 선택할 때 어떤 트레이드오프(비용, 확장성, 인프라 운영 난이도)를 고려하셨나요?'</em><br>" +
-                           "• <em>'RAG 컨텍스트가 너무 길어져 LLM 윈도우를 초과하거나 비용이 낭비될 때 어떻게 제어하셨나요?'</em>" +
-                           ragSnippetHtml,
-                    model: "TechPrep AI Mentor (RAG Client Mode)",
-                    references: referencesMeta
-                };
-            }
-
-            if (low.includes('모르겠') || low.includes('막막') || low.includes('방황') || low.includes('어떡') || (low.includes('무엇을') && low.includes('해야')) || (low.includes('어떤걸') && low.includes('해야'))) {
-                return {
-                    reply: "☕ <strong>[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]</strong><br><br>" +
-                           "아이고, 많이 답답하고 막막하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.<br><br>" +
-                           "이럴 때는 너무 거창한 목표를 세우기보다 <strong>작고 확실한 3단계</strong>로 호흡을 가다듬는 게 가장 효과적이에요:<br><br>" +
-                           "<strong>1. 관심 도메인 하나 딱 정하기</strong><br>" +
-                           "- 백엔드, 프론트엔드, DevOps/인프라, 데이터 등 모든 것을 다 잘할 수는 없습니다. 마음이 조금이라도 더 끌리는 메인 트랙 하나를 정해보세요.<br><br>" +
-                           "<strong>2. 작은 서비스 하나 끝까지 배포해 보기 (End-to-End)</strong><br>" +
-                           "- 강의만 계속 듣는 '인강 완강 러너'에서 벗어나, 로그인부터 DB 연동, 클라우드 무료 배포(Render/Vercel)까지 작은 기능을 내 손으로 끝장내 보는 경험이 자신감을 되찾아 줍니다.<br><br>" +
-                           "<strong>3. 실패 노트(에러 로그) 작성하기</strong><br>" +
-                           "- '오늘 겪은 에러와 내가 시도한 해결책 3줄'을 기록하는 습관만 들여도 면접관이 가장 좋아하는 훌륭한 포트폴리오가 됩니다.<br><br>" +
-                           "지치지 말고 페이스 유지하세요! 구체적으로 어떤 기술이나 분야가 고민되는지 조금 더 편하게 털어놔 주시면 제가 함께 길을 찾아드릴게요. 💪",
-                    model: "TechPrep AI Mentor (Career Coach)",
-                    references: null
-                };
-            }
-
-            if (low.includes('안녕') || low.includes('반가') || low.includes('하이') || low.includes('hello')) {
-                return {
-                    reply: "안녕하세요! 반갑습니다. 😊 TechPrep-AI의 시니어 DevOps / 백엔드 면접관 멘토입니다.<br><br>개발 공부, 진로 고민, 일상 스몰토크부터 실전 기술 면접 팁까지 편하게 무엇이든 물어보세요! 따뜻하고 든든하게 도와드릴게요.",
-                    model: "TechPrep AI Mentor (Daily Coach)",
-                    references: null
+                    references: null,
+                    rag_used: false
                 };
             }
 
@@ -1844,7 +1813,8 @@
                            "- 질문을 받자마자 1초 만에 대답할 필요가 전혀 없습니다. '좋은 질문 감사드립니다. 잠시 생각할 시간을 3초만 가져도 될까요?'라고 여유를 가지면 긴장감이 확 내려갑니다.<br><br>" +
                            "지금까지 치열하게 준비해 오신 것만으로도 이미 훌륭한 엔지니어입니다. 본인을 믿고 편안하게 이야기 나누고 오세요! 진심으로 합격을 응원합니다! 🍀",
                     model: "TechPrep AI Mentor (Mindset Coach)",
-                    references: null
+                    references: null,
+                    rag_used: false
                 };
             }
 
@@ -1859,10 +1829,49 @@
                            "<strong>3. 협업과 코드 품질에 대한 태도</strong><br>" +
                            "- Git 커밋 컨벤션, PR 리뷰, 단위 테스트 작성 등 '팀으로 일할 준비가 되어 있는가'를 프로젝트 README와 커밋 로그로 증명하세요.<br><br>" +
                            "<strong>4. 겸손하면서도 집요한 학습 태도</strong><br>" +
-                           "- 모르는 질문이 나왔을 때 아는 척 얼버무리지 않고, '현재 아는 지점까지 논리적으로 추론'하며 배우려는 자세를 보여주는 것이 훨씬 좋은 인상을 줍니다." +
+                           "- 모르는 질문이 나왔을 때 아는 척 얼버무리지 않고, '현재 아는 지점까지 논리적으로 추론'하며 배우려는 자세를 보여주는 것이 훨씬 좋은 인상을 줍니다.",
+                    model: "TechPrep AI Mentor (Career Coach)",
+                    references: null,
+                    rag_used: false
+                };
+            }
+
+            if (low.includes('모르겠') || low.includes('막막') || low.includes('방황') || low.includes('어떡') || (low.includes('무엇을') && low.includes('해야')) || (low.includes('어떤걸') && low.includes('해야'))) {
+                return {
+                    reply: "☕ <strong>[선배의 든든한 멘토링: 무엇을 해야 할지 막막할 때]</strong><br><br>" +
+                           "아이고, 많이 답답하고 막막하시죠. 😢 주니어 시절에는 누구나 '내가 지금 잘하고 있는 건가?', '도대체 어디서부터 시작해야 하지?' 같은 깊은 혼란을 겪습니다. 저 또한 신입 시절에 매일 밤 똑같은 고민을 했었답니다.<br><br>" +
+                           "이럴 때는 너무 거창한 목표를 세우기보다 <strong>작고 확실한 3단계</strong>로 호흡을 가다듬는 게 가장 효과적이에요:<br><br>" +
+                           "<strong>1. 관심 도메인 하나 딱 정하기</strong><br>" +
+                           "- 백엔드, 프론트엔드, DevOps/인프라, 데이터 등 모든 것을 다 잘할 수는 없습니다. 마음이 조금이라도 더 끌리는 메인 트랙 하나를 정해보세요.<br><br>" +
+                           "<strong>2. 작은 서비스 하나 끝까지 배포해 보기 (End-to-End)</strong><br>" +
+                           "- 강의만 계속 듣는 '인강 완강 러너'에서 벗어나, 로그인부터 DB 연동, 클라우드 무료 배포(Render/Vercel)까지 작은 기능을 내 손으로 끝장내 보는 경험이 자신감을 되찾아 줍니다.<br><br>" +
+                           "<strong>3. 실패 노트(에러 로그) 작성하기</strong><br>" +
+                           "- '오늘 겪은 에러와 내가 시도한 해결책 3줄'을 기록하는 습관만 들여도 면접관이 가장 좋아하는 훌륭한 포트폴리오가 됩니다.<br><br>" +
+                           "지치지 말고 페이스 유지하세요! 구체적으로 어떤 기술이나 분야가 고민되는지 조금 더 편하게 털어놔 주시면 제가 함께 길을 찾아드릴게요. 💪",
+                    model: "TechPrep AI Mentor (Career Coach)",
+                    references: null,
+                    rag_used: false
+                };
+            }
+
+            // 기술 도메인 질문 (RAG 적용)
+            ragUsed = !!(referencesMeta && referencesMeta.length > 0);
+
+            if (low.includes('llm') || low.includes('rag') || low.includes('생성형') || low.includes('프롬프트') || low.includes('에이전트') || low.includes('agent')) {
+                return {
+                    reply: "🤖 <strong>[시니어 면접관 코칭: LLM & RAG 실무 경험 어필 가이드]</strong><br><br>" +
+                           "정말 트렌디하고 강력한 무기입니다! 면접관이 LLM/RAG 프로젝트를 볼 때 가장 관심 있게 보는 것은 '단순히 API를 호출해 봤는가'가 아니라, <strong>'LLM의 한계(비용, 지연 시간, 환각)를 시스템 아키텍처로 어떻게 극복했는가'</strong>입니다.<br><br>" +
+                           "<strong>1. 핵심 어필 포인트:</strong><br>" +
+                           "- <strong>환각(Hallucination) 방어</strong>: BM25 키워드 검색과 Dense 벡터 임베딩을 결합한 하이브리드 검색 파이프라인 및 Re-ranking 모델 적용 경험을 설명하세요.<br>" +
+                           "- <strong>비용 & 레이턴시 최적화</strong>: Redis Semantic Cache를 통한 반복 질의 응답 시간(Latency) 단축, 불필요한 토큰 비용 절감 사례를 수치와 함께 언급하세요.<br>" +
+                           "- <strong>데이터 청킹(Chunking) 전략</strong>: 문서 분할 시 문맥 손실을 막기 위해 Recursive Character Splitting이나 메타데이터 태깅을 고민했던 엔지니어링 과정을 어필하세요.<br><br>" +
+                           "<strong>2. 단골 꼬리 질문(Follow-up):</strong><br>" +
+                           "• <em>'벡터 DB(Pinecone, pgvector 등)를 선택할 때 어떤 트레이드오프(비용, 확장성, 인프라 운영 난이도)를 고려하셨나요?'</em><br>" +
+                           "• <em>'RAG 컨텍스트가 너무 길어져 LLM 윈도우를 초과하거나 비용이 낭비될 때 어떻게 제어하셨나요?'</em>" +
                            ragSnippetHtml,
                     model: "TechPrep AI Mentor (RAG Client Mode)",
-                    references: referencesMeta
+                    references: referencesMeta,
+                    rag_used: ragUsed
                 };
             }
 
@@ -1878,7 +1887,8 @@
                            "• <em>'ReadinessProbe가 실패했을 때 서비스 엔드포인트에서 Pod는 어떻게 처리되나요?'</em>" +
                            ragSnippetHtml,
                     model: "TechPrep AI Mentor (RAG Client Mode)",
-                    references: referencesMeta
+                    references: referencesMeta,
+                    rag_used: ragUsed
                 };
             }
 
@@ -1894,7 +1904,8 @@
                            "• <em>'RCE(원격 코드 실행) 취약점이 발견되었을 때 파이프라인 상에서의 긴급 격리 프로세스는?'</em>" +
                            ragSnippetHtml,
                     model: "TechPrep AI Mentor (RAG Client Mode)",
-                    references: referencesMeta
+                    references: referencesMeta,
+                    rag_used: ragUsed
                 };
             }
 
@@ -1910,24 +1921,22 @@
                            "• <em>'서버리스(Lambda) 환경에서 콜드 스타트 지연을 줄이기 위한 최적화 기법은?'</em>" +
                            ragSnippetHtml,
                     model: "TechPrep AI Mentor (RAG Client Mode)",
-                    references: referencesMeta
+                    references: referencesMeta,
+                    rag_used: ragUsed
                 };
             }
 
             return {
-                reply: `안녕하세요! 주니어 지원자님의 질문에 대해 시니어 엔지니어 관점에서 답변드릴게요. 😊<br><br>` +
-                       `<strong>"${userMsg}"</strong> 주제는 지원자의 문제 해결 능력과 기술적 깊이를 보여주기에 아주 훌륭한 주제입니다.<br><br>` +
-                       `<strong>핵심 전달 포인트:</strong><br>` +
-                       `• <strong>Situation & Task</strong>: 직면했던 기술적 병목이나 요구사항을 명확한 수치/지표로 정의하세요.<br>` +
-                       `• <strong>Action</strong>: 여러 기술 대안 중 왜 이 방식을 선택했는지 기술적 근거(Trade-off)를 명확히 밝히세요.<br>` +
-                       `• <strong>Result & Learning</strong>: 개선 결과와 더불어 실무에서 겪었던 한계점 극복 과정을 덧붙이시면 훨씬 매력적인 답변이 됩니다.` +
+                reply: `주니어 지원자님의 질문에 대해 시니어 엔지니어 관점에서 답변드릴게요. 😊<br><br>` +
+                       `질문해 주신 <strong>"${userMsg}"</strong> 주제와 관련하여 실무에서 중요한 핵심 포인트나 구체적인 기술 스택을 말씀해 주시면, 함께 깊이 있는 디버깅 포인트와 모범 답변 방향을 짚어드릴게요!` +
                        ragSnippetHtml,
                 model: referencesMeta ? "TechPrep AI Mentor (Domain Coach + RAG)" : "TechPrep AI Mentor (Senior Mentor)",
-                references: referencesMeta
+                references: referencesMeta,
+                rag_used: ragUsed
             };
         }
 
-        function appendChatMessage(role, text, modelName, references = null, autoScroll = true) {
+        function appendChatMessage(role, text, modelName, references = null, ragUsed = false, autoScroll = true) {
             const messagesContainer = document.getElementById('chat-messages');
             const isUser = (role === 'user');
 
@@ -1968,6 +1977,10 @@
                     </div>
                 `;
             } else {
+                const badgeHtml = ragUsed
+                    ? '<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-shield-check mr-0.5"></i>RAG 활성</span>'
+                    : '<span class="text-indigo-600 font-semibold"><i class="fa-solid fa-comment-dots mr-0.5"></i>일반 대화</span>';
+
                 msgDiv.innerHTML = `
                     <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                         <i class="fa-solid fa-robot text-xs"></i>
@@ -1977,11 +1990,17 @@
                         ${refBadgeHtml}
                         ${modelName ? `<div class="text-[9px] text-slate-400 font-medium pt-1 border-t border-slate-100 mt-1 flex items-center justify-between">
                             <span><i class="fa-solid fa-microchip mr-1"></i>${modelName}</span>
-                            <span class="text-emerald-600"><i class="fa-solid fa-shield-check mr-0.5"></i>RAG 활성</span>
+                            ${badgeHtml}
                         </div>` : ''}
                     </div>
                 `;
             }
+
+            messagesContainer.appendChild(msgDiv);
+            if (autoScroll) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
 
             messagesContainer.appendChild(msgDiv);
             if (autoScroll) {
