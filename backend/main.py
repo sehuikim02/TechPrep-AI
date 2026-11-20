@@ -536,6 +536,12 @@ def retrieve_relevant_news(query: str, top_k: int = 3) -> List[Dict]:
     scored_articles.sort(key=lambda x: x[0], reverse=True)
     return [item for _, item in scored_articles[:top_k]]
 
+# --- Anonymous & Authenticated Session Store Helper ---
+def get_effective_session_key(current_user: Optional[dict], x_session_id: Optional[str]) -> str:
+    if current_user and current_user.get("username"):
+        return f"user:{current_user['username']}"
+    return x_session_id or "default-session"
+
 # --- Anonymous & Authenticated Session Store ---
 session_store: Dict[str, Dict[str, Dict]] = {}
 
@@ -555,8 +561,9 @@ class CreateRoomRequest(BaseModel):
     title: Optional[str] = "새 대화"
 
 @app.get("/api/chats")
-async def list_chat_rooms(x_session_id: Optional[str] = Header(None)):
-    sid = x_session_id or "default-session"
+async def list_chat_rooms(authorization: Optional[str] = Header(None), x_session_id: Optional[str] = Header(None)):
+    current_user = get_current_user_optional(authorization)
+    sid = get_effective_session_key(current_user, x_session_id)
     rooms = session_store.get(sid, {})
     result = []
     for rid, rdata in rooms.items():
@@ -570,8 +577,9 @@ async def list_chat_rooms(x_session_id: Optional[str] = Header(None)):
     return result
 
 @app.post("/api/chats")
-async def create_chat_room(req: CreateRoomRequest, x_session_id: Optional[str] = Header(None)):
-    sid = x_session_id or "default-session"
+async def create_chat_room(req: CreateRoomRequest, authorization: Optional[str] = Header(None), x_session_id: Optional[str] = Header(None)):
+    current_user = get_current_user_optional(authorization)
+    sid = get_effective_session_key(current_user, x_session_id)
     if sid not in session_store:
         session_store[sid] = {}
     
@@ -585,16 +593,18 @@ async def create_chat_room(req: CreateRoomRequest, x_session_id: Optional[str] =
     return {"room_id": room_id, "title": req.title, "created_at": now_iso}
 
 @app.get("/api/chats/{room_id}/messages")
-async def get_room_messages(room_id: str, x_session_id: Optional[str] = Header(None)):
-    sid = x_session_id or "default-session"
+async def get_room_messages(room_id: str, authorization: Optional[str] = Header(None), x_session_id: Optional[str] = Header(None)):
+    current_user = get_current_user_optional(authorization)
+    sid = get_effective_session_key(current_user, x_session_id)
     rooms = session_store.get(sid, {})
     if room_id not in rooms:
         return []
     return rooms[room_id].get("messages", [])
 
 @app.delete("/api/chats/{room_id}")
-async def delete_chat_room(room_id: str, x_session_id: Optional[str] = Header(None)):
-    sid = x_session_id or "default-session"
+async def delete_chat_room(room_id: str, authorization: Optional[str] = Header(None), x_session_id: Optional[str] = Header(None)):
+    current_user = get_current_user_optional(authorization)
+    sid = get_effective_session_key(current_user, x_session_id)
     if sid in session_store and room_id in session_store[sid]:
         del session_store[sid][room_id]
         return {"success": True, "message": "삭제되었습니다."}
@@ -645,7 +655,7 @@ async def chat_with_mentor(
             detail=f"⚠️ GEMINI API 키 사용 권한이 없습니다. {status_reason}"
         )
 
-    sid = x_session_id or "default-session"
+    sid = get_effective_session_key(current_user, x_session_id)
     if sid not in session_store:
         session_store[sid] = {}
 
