@@ -53,7 +53,7 @@
 <body class="bg-gradient-to-br from-slate-50 via-indigo-50/40 to-sky-50 text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
     <!-- Top Navigation Header -->
-    <header class="border-b border-indigo-100/80 bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 shadow-sm">
+    <header id="top-main-header" class="hidden border-b border-indigo-100/80 bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 shadow-sm">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center space-x-3.5">
                 <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
@@ -204,12 +204,7 @@
                     </button>
                 </form>
 
-                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span id="gate-auth-toggle-prompt">아직 계정이 없으신가요?</span>
-                    <button type="button" onclick="toggleAuthMode()" id="gate-auth-toggle-btn" class="font-bold text-indigo-600 hover:text-indigo-800 underline">
-                        회원가입하기
-                    </button>
-                </div>
+
             </div>
         </div>
     </div>
@@ -555,6 +550,7 @@
         }
 
         function updateAuthUI(user) {
+            const topHeader = document.getElementById('top-main-header');
             const guestView = document.getElementById('auth-guest-view');
             const loggedInView = document.getElementById('auth-logged-in-view');
             const navUsername = document.getElementById('nav-username');
@@ -564,18 +560,17 @@
             const mainContentArea = document.getElementById('main-content-area');
             const guestGateBanner = document.getElementById('guest-gate-banner');
             const chatWidgetWrapper = document.getElementById('chat-widget-wrapper');
-            const modalCloseBtn = document.getElementById('auth-modal-close-btn');
 
             if (user) {
-                // 1. 로그인 상태: 메인 기사 영역 및 챗봇 위젯 활성화
-                guestView.classList.add('hidden');
-                loggedInView.classList.remove('hidden');
-                navUsername.textContent = user.username;
+                // 1. 로그인 상태: 상단 헤더, 메인 기사 영역 및 챗봇 위젯 활성화
+                if (topHeader) topHeader.classList.remove('hidden');
+                if (guestView) guestView.classList.add('hidden');
+                if (loggedInView) loggedInView.classList.remove('hidden');
+                if (navUsername) navUsername.textContent = user.username;
 
                 if (guestGateBanner) guestGateBanner.classList.add('hidden');
                 if (mainContentArea) mainContentArea.classList.remove('hidden');
                 if (chatWidgetWrapper) chatWidgetWrapper.classList.remove('hidden');
-                if (modalCloseBtn) modalCloseBtn.classList.remove('hidden');
 
                 // Badge styling based on role & api_status
                 if (user.role === 'admin') {
@@ -596,7 +591,7 @@
                     adminDashBtn.classList.add('hidden');
                 }
 
-                // 기사 데이터가 아직 로드되지 않았다면 로드
+                // 기사 데이터 로드
                 if (!allArticles || allArticles.length === 0) {
                     loadPrepData();
                 }
@@ -604,21 +599,18 @@
                 // 로그인 사용자 계정에 맞춰 챗봇 대화방 목록 및 내역 즉시 전환
                 initChatSession();
             } else {
-                // 2. 비로그인 상태: 메인 기사 및 챗봇 위젯 잠금, 로그인 게이트 활성화
-                guestView.classList.remove('hidden');
-                loggedInView.classList.add('hidden');
-                adminDashBtn.classList.add('hidden');
+                // 2. 비로그인 상태: 상단 헤더, 메인 기사 및 챗봇 위젯 완전 숨김, 전용 로그인 화면만 노출
+                if (topHeader) topHeader.classList.add('hidden');
+                if (guestView) guestView.classList.remove('hidden');
+                if (loggedInView) loggedInView.classList.add('hidden');
+                if (adminDashBtn) adminDashBtn.classList.add('hidden');
 
                 if (mainContentArea) mainContentArea.classList.add('hidden');
                 if (chatWidgetWrapper) chatWidgetWrapper.classList.add('hidden');
                 if (guestGateBanner) guestGateBanner.classList.remove('hidden');
-                if (modalCloseBtn) modalCloseBtn.classList.add('hidden');
 
-                // 비로그인 상태: 화면 중앙의 전용 인증 게이트 활성화 (모달 팝업 대신 전용 카드 노출)
-                if (modalCloseBtn) modalCloseBtn.classList.add('hidden');
-                const modal = document.getElementById('auth-modal');
-                if (modal) modal.classList.add('hidden');
-                openAuthModal('login');
+                // 전용 로그인 카드 'login' 탭으로 전환
+                switchGateAuthMode('login');
             }
         }
 
@@ -631,107 +623,58 @@
             const messagesContainer = document.getElementById('chat-messages');
             if (messagesContainer) messagesContainer.innerHTML = '';
             updateAuthUI(null);
-            showAuthAlert('auth-success', '성공적으로 로그아웃되었습니다.');
-            openAuthModal('login');
+            showGateAuthAlert('auth-success', '성공적으로 로그아웃되었습니다.');
         }
 
-        // ==================== Auth Modal Handlers ====================
-        function openAuthModal(mode = 'login') {
+        // ==================== Dedicated Auth Gate Handlers (Unified) ====================
+        function switchGateAuthMode(mode = 'login') {
             currentAuthMode = mode;
-            const modal = document.getElementById('auth-modal');
-            const modalTitle = document.getElementById('auth-modal-title');
-            const modalIcon = document.getElementById('auth-modal-icon');
-            const submitText = document.getElementById('auth-submit-text');
-            const togglePrompt = document.getElementById('auth-toggle-prompt');
-            const toggleBtn = document.getElementById('auth-toggle-btn');
-            const pendingNotice = document.getElementById('auth-pending-notice');
+            hideGateAuthAlerts();
 
-            hideAuthAlerts();
-            document.getElementById('auth-username').value = '';
-            document.getElementById('auth-password').value = '';
+            const usernameInput = document.getElementById('gate-auth-username');
+            const passwordInput = document.getElementById('gate-auth-password');
+            if (usernameInput) usernameInput.value = '';
+            if (passwordInput) passwordInput.value = '';
 
-            const pwdPolicyBox = document.getElementById('auth-pwd-policy-box');
-            const gatePwdPolicyBox = document.getElementById('gate-auth-pwd-policy-box');
-            const gatePendingNotice = document.getElementById('gate-auth-pending-notice');
             const gateTabLogin = document.getElementById('gate-tab-login');
             const gateTabRegister = document.getElementById('gate-tab-register');
             const gateSubmitText = document.getElementById('gate-auth-submit-text');
-            const gateTogglePrompt = document.getElementById('gate-auth-toggle-prompt');
-            const gateToggleBtn = document.getElementById('gate-auth-toggle-btn');
+            const gatePendingNotice = document.getElementById('gate-auth-pending-notice');
+            const gatePwdPolicyBox = document.getElementById('gate-auth-pwd-policy-box');
 
             if (mode === 'register') {
-                if (modalTitle) modalTitle.textContent = '회원가입';
-                if (modalIcon) modalIcon.className = 'fa-solid fa-user-plus text-white';
-                if (submitText) submitText.textContent = '회원가입 완료';
-                if (togglePrompt) togglePrompt.textContent = '이미 계정이 있으신가요?';
-                if (toggleBtn) toggleBtn.textContent = '로그인하기';
-                if (pendingNotice) pendingNotice.classList.remove('hidden');
-                if (pwdPolicyBox) pwdPolicyBox.classList.remove('hidden');
-
-                // Sync Gate Screen
                 if (gateTabLogin) gateTabLogin.className = 'py-2 rounded-2xl text-slate-500 hover:text-slate-800 transition';
                 if (gateTabRegister) gateTabRegister.className = 'py-2 rounded-2xl bg-white text-indigo-600 shadow-xs transition';
                 if (gateSubmitText) gateSubmitText.textContent = '회원가입 완료';
-                if (gateTogglePrompt) gateTogglePrompt.textContent = '이미 계정이 있으신가요?';
-                if (gateToggleBtn) gateToggleBtn.textContent = '로그인하기';
                 if (gatePendingNotice) gatePendingNotice.classList.remove('hidden');
                 if (gatePwdPolicyBox) gatePwdPolicyBox.classList.remove('hidden');
-
-                checkPasswordPolicyLive('');
                 checkGatePasswordPolicyLive('');
             } else {
-                if (modalTitle) modalTitle.textContent = '로그인';
-                if (modalIcon) modalIcon.className = 'fa-solid fa-lock text-white';
-                if (submitText) submitText.textContent = '로그인하기';
-                if (togglePrompt) togglePrompt.textContent = '아직 계정이 없으신가요?';
-                if (toggleBtn) toggleBtn.textContent = '회원가입하기';
-                if (pendingNotice) pendingNotice.classList.add('hidden');
-                if (pwdPolicyBox) pwdPolicyBox.classList.add('hidden');
-
-                // Sync Gate Screen
                 if (gateTabLogin) gateTabLogin.className = 'py-2 rounded-2xl bg-white text-indigo-600 shadow-xs transition';
                 if (gateTabRegister) gateTabRegister.className = 'py-2 rounded-2xl text-slate-500 hover:text-slate-800 transition';
                 if (gateSubmitText) gateSubmitText.textContent = '로그인하기';
-                if (gateTogglePrompt) gateTogglePrompt.textContent = '아직 계정이 없으신가요?';
-                if (gateToggleBtn) gateToggleBtn.textContent = '회원가입하기';
                 if (gatePendingNotice) gatePendingNotice.classList.add('hidden');
                 if (gatePwdPolicyBox) gatePwdPolicyBox.classList.add('hidden');
             }
 
-            modal.classList.remove('hidden');
-            setTimeout(() => document.getElementById('auth-username').focus(), 100);
+            setTimeout(() => {
+                if (usernameInput) usernameInput.focus();
+            }, 100);
         }
 
-        function closeAuthModal() {
-            // 비로그인 상태일 때는 모달 닫기 방지 (로그인 게이트 유지)
-            if (!currentUser) {
-                return;
-            }
-            document.getElementById('auth-modal').classList.add('hidden');
-            hideAuthAlerts();
+        // Backward compatibility wrappers for any remaining calls
+        function openAuthModal(mode = 'login') {
+            switchGateAuthMode(mode);
         }
-
+        function closeAuthModal() {}
         function toggleAuthMode() {
-            openAuthModal(currentAuthMode === 'login' ? 'register' : 'login');
+            switchGateAuthMode(currentAuthMode === 'login' ? 'register' : 'login');
         }
-
         function showAuthAlert(type, message) {
-            const errAlert = document.getElementById('auth-error-alert');
-            const succAlert = document.getElementById('auth-success-alert');
-            if (type === 'auth-error') {
-                document.getElementById('auth-error-text').textContent = message;
-                errAlert.classList.remove('hidden');
-                succAlert.classList.add('hidden');
-            } else {
-                document.getElementById('auth-success-text').textContent = message;
-                succAlert.classList.remove('hidden');
-                errAlert.classList.add('hidden');
-            }
+            showGateAuthAlert(type, message);
         }
-
         function hideAuthAlerts() {
-            document.getElementById('auth-error-alert').classList.add('hidden');
-            document.getElementById('auth-success-alert').classList.add('hidden');
+            hideGateAuthAlerts();
         }
 
         function checkGatePasswordPolicyLive(pwd) {
@@ -2329,92 +2272,6 @@
             initChatSession();
         });
     </script>
-
-    <!-- ==================== Auth Modal (Login / Register) ==================== -->
-    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity">
-        <div class="bg-white rounded-3xl shadow-2xl border border-indigo-100 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-white flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
-                        <i id="auth-modal-icon" class="fa-solid fa-lock text-white"></i>
-                    </div>
-                    <div>
-                        <h3 id="auth-modal-title" class="font-extrabold text-lg">로그인</h3>
-                        <p id="auth-modal-subtitle" class="text-xs text-indigo-100">TechPrep-AI 시니어 멘토링 서비스</p>
-                    </div>
-                </div>
-                <button id="auth-modal-close-btn" onclick="closeAuthModal()" class="hidden w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 space-y-4">
-                <div id="auth-error-alert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                    <i class="fa-solid fa-circle-exclamation shrink-0 text-sm"></i>
-                    <span id="auth-error-text">오류가 발생했습니다.</span>
-                </div>
-                <div id="auth-success-alert" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check shrink-0 text-sm"></i>
-                    <span id="auth-success-text">성공적으로 처리되었습니다.</span>
-                </div>
-
-                <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">아이디</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                <i class="fa-solid fa-user text-xs"></i>
-                            </span>
-                            <input type="text" id="auth-username" required minlength="3" placeholder="아이디 입력 (최소 3자)"
-                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                <i class="fa-solid fa-key text-xs"></i>
-                            </span>
-                            <input type="password" id="auth-password" required minlength="8" placeholder="비밀번호 입력 (8~64자, 영문/숫자/특수문자 포함)"
-                                oninput="checkPasswordPolicyLive(this.value)"
-                                class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
-                        </div>
-                        <!-- Password Strength Policy Checklist (Visible in Register Mode) -->
-                        <div id="auth-pwd-policy-box" class="hidden mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
-                            <div class="text-slate-500 font-bold mb-1 flex items-center justify-between">
-                                <span>비밀번호 보안 필수 조건:</span>
-                                <span id="pwd-policy-status" class="font-mono text-[10px] text-slate-400">0/4 충족</span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-1 text-[10.5px]">
-                                <div id="policy-len" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 최소 8자 이상</div>
-                                <div id="policy-eng" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 영문자 포함</div>
-                                <div id="policy-num" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 숫자 1개 이상</div>
-                                <div id="policy-sym" class="flex items-center gap-1.5 text-slate-400"><i class="fa-solid fa-circle-xmark text-rose-400"></i> 특수문자 1개 이상</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="auth-pending-notice" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
-                        <i class="fa-solid fa-info-circle mr-1"></i> 일반 회원가입 시 <strong>승인 대기(pending)</strong> 상태로 생성되며, 관리자가 승인한 후 GEMINI API 챗봇을 호출할 수 있습니다.
-                    </div>
-
-                    <button type="submit" id="auth-submit-btn" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2">
-                        <span id="auth-submit-text">로그인하기</span>
-                    </button>
-                </form>
-
-                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span id="auth-toggle-prompt">아직 계정이 없으신가요?</span>
-                    <button type="button" onclick="toggleAuthMode()" id="auth-toggle-btn" class="font-bold text-indigo-600 hover:text-indigo-800 underline">
-                        회원가입하기
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ==================== Admin Dashboard Modal ==================== -->
     <div id="admin-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-xs transition-opacity">
