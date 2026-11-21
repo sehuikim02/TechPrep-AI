@@ -1,17 +1,34 @@
 {
   "metadata": {
     "title": "TechPrep-AI: 개발자 취업 및 면접 대비 실시간 IT 트렌드 브리핑",
-    "last_updated": "2026-11-21 06:15:11 UTC",
-    "total_articles": 646,
+    "last_updated": "2026-11-21 18:52:49 UTC",
+    "total_articles": 657,
     "categories": {
-      "보안/침해사고": 90,
-      "AI/머신러닝": 315,
-      "클라우드 아키텍처": 94,
-      "인프라/DevOps": 74,
-      "IT 트렌드": 73
+      "클라우드 아키텍처": 96,
+      "보안/침해사고": 91,
+      "AI/머신러닝": 321,
+      "인프라/DevOps": 75,
+      "IT 트렌드": 74
     }
   },
   "articles": [
+    {
+      "title": "[ET시선] 공공 클라우드 전환, 보안·개방 해법 찾아야",
+      "link": "https://www.etnews.com/20261120000265",
+      "source": "전자신문 (AI·SW)",
+      "published": "Sat, 21 Nov 2026 17:00:00 +0900",
+      "category": "클라우드 아키텍처",
+      "summary": "지난해 국가정보자원관리원(국정자원) 대전센터 화재는 공공 정보시스템 운영 체계의 취약성을 드러냈다. 정부는 이를 계기로 공공 정보화 체계 재설계 작업에 착수했다. 핵심은 정부가 직접 구축하고 운영하는 폐쇄적 인프라에서 벗어나 민간의 클라우드 기술과 자원을 적극 활용하는 것이다. 공공 정보시스템의 안정성과 복원력을 높이는 동시에 인공지능(AI) 도입에 필요한...",
+      "keywords": [
+        "공공",
+        "클라우드",
+        "ET시선",
+        "전환"
+      ],
+      "interview_insight": "'[ET시선] 공공 클라우드 전환, 보...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "지난해 국가정보자원관리원(국정자원) 대전센터 화재는 공공 정보시스템 운영 체계의 취약성을 드러냈다. 정부는 이를 계기로 공공 정보화 체계 재설계 작업에 착수했다. 핵심은 정부가 직접 구축하고 운영하는 폐쇄적 인프라에서 벗어나 민간의 클라우드 기술과 자원을 적극 활용하는 것이다. 공공 정보시스템의 안정성과 복원력을 높이는 동시에 인공지능(AI) 도입에 필요한 유연한 인프라를 확보하겠다는 구상이다. 정부의 정책 방향은 분명하다. 국가AI전략위원회는"
+    },
     {
       "title": "크라우드스트라이크, 지스케일러 인수 추진… 사이버보안 '초대형 빅딜'",
       "link": "https://www.etnews.com/20261121000041",
@@ -727,40 +744,6 @@
       "raw_snippet": "앤트로픽이 역대 최대 규모의 자금 조달에 나서면서 국내 인공지능(AI) 기업에 미칠 영향에 관심이 쏠린다. 국내 AI 업계는 투자심리 개선에 기대감을 내비치면서도 실제 기업가치 상승으로 이어지려면 기술력과 지속가능성 등 경쟁력을 입증해야 한다는 데 공감대를 형성했다. 18일(현지시간) 앤트로픽은 기업공개(IPO) 공모가를 희망 범위인 70~78달러를 웃도는 주당 83달러로 확정했다고 발표했다. IPO와 별도 사모투자로 조달한 자금은 총 1073"
     },
     {
-      "title": "[이슈플러스] 앤트로픽 역대 최대 IPO…AI 거품론 잠재울까",
-      "link": "https://www.etnews.com/20261119000417",
-      "source": "전자신문 (AI·SW)",
-      "published": "Thu, 19 Nov 2026 17:01:04 +0900",
-      "category": "AI/머신러닝",
-      "summary": "프런티어 인공지능(AI) 모델 개발사 가운데 처음으로 미국 나스닥 상장에 도전하는 앤트로픽이 역대 최대 기업공개(IPO) 기록을 경신하게 됐다. 앤트로픽은 18일(현지시간) 공모가를 희망가격 범위(70~78달러) 상단보다 6.4% 높은 주당 83달러로 확정했다고 밝혔다. 공모 주식 수도 당초 8억2500만주에서 9억8000만주로 늘렸다. 블룸버그에 따르면 ...",
-      "keywords": [
-        "앤트로픽",
-        "역대",
-        "최대",
-        "IPO"
-      ],
-      "interview_insight": "'[이슈플러스] 앤트로픽 역대 최대 I...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "프런티어 인공지능(AI) 모델 개발사 가운데 처음으로 미국 나스닥 상장에 도전하는 앤트로픽이 역대 최대 기업공개(IPO) 기록을 경신하게 됐다. 앤트로픽은 18일(현지시간) 공모가를 희망가격 범위(70~78달러) 상단보다 6.4% 높은 주당 83달러로 확정했다고 밝혔다. 공모 주식 수도 당초 8억2500만주에서 9억8000만주로 늘렸다. 블룸버그에 따르면 앤트로픽 IPO에는 당초 공모 물량의 7배에 육박하는 투자 수요가 몰렸다. 이에 따라 앤트"
-    },
-    {
-      "title": "이스트소프트, K-FAST 확산 2년 수행…콘텐츠 300시간 AI 더빙",
-      "link": "https://www.etnews.com/20261119000416",
-      "source": "전자신문 (AI·SW)",
-      "published": "Thu, 19 Nov 2026 17:00:43 +0900",
-      "category": "AI/머신러닝",
-      "summary": "이스트소프트가 인공지능(AI) 더빙 특화 K-FAST(광고 기반 무료 스트리밍 TV) 확산 지원사업을 2년 연속 수행하며 기술 경쟁력을 강화했다고 19일 밝혔다. FAST 플랫폼 기반 K-콘텐츠 해외 유통을 지원하는 사업이다. 이스트소프트는 지난 2년간 드라마·예능·다큐멘터리 등 약 300시간 방송 콘텐츠를 AI로 더빙했다. AI 더빙 기술을 활용해 한국 ...",
-      "keywords": [
-        "FAST",
-        "콘텐츠",
-        "300시간",
-        "AI"
-      ],
-      "interview_insight": "'이스트소프트, K-FAST 확산 2년...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "이스트소프트가 인공지능(AI) 더빙 특화 K-FAST(광고 기반 무료 스트리밍 TV) 확산 지원사업을 2년 연속 수행하며 기술 경쟁력을 강화했다고 19일 밝혔다. FAST 플랫폼 기반 K-콘텐츠 해외 유통을 지원하는 사업이다. 이스트소프트는 지난 2년간 드라마·예능·다큐멘터리 등 약 300시간 방송 콘텐츠를 AI로 더빙했다. AI 더빙 기술을 활용해 한국 콘텐츠 중남미 시장 진출을 확대했다. 정부 지원사업으로 300시간 분량 콘텐츠를 더빙하고"
-    },
-    {
       "title": "'AI 커닝' 막아라…보안업계, 스마트안경 탐지기 개발 경쟁",
       "link": "https://www.etnews.com/20261119000208",
       "source": "전자신문 (보안)",
@@ -1373,6 +1356,40 @@
       "raw_snippet": "파수AI가 기업의 인공지능(AI) 활용 가치를 높이면서 보안 위험을 최소화하기 위한 통합 전략을 제시했다. AI 에이전트 확산에 필요한 데이터 환경을 구축하고, 개발부터 운영까지 전 과정에 보안 통제를 적용하는 전략이다. 파수AI는 17일 서울 강남구 웨스틴 서울 파르나스에서 'FDI 서밋 2026-하반기'를 개최했다 행사에는 금융·유통·제조·법률 분야 기업과 기관의 정보기술(IT)·보안 책임자 50여명이 참석했다. 조규곤 파수AI 대표는 기업"
     },
     {
+      "title": "울산 SK AI데이터센터 찾은 李…“韓 AX는 AI 고속도로가 열 것”",
+      "link": "https://www.etnews.com/20261121000052",
+      "source": "전자신문 (정책·사회)",
+      "published": "Sat, 21 Nov 2026 18:08:24 +0900",
+      "category": "IT 트렌드",
+      "summary": "이재명 대통령이 울산에서 메가프로젝트 일환으로 추진 중인 SK AI데이터센터를 찾아 지방 균형 발전과 추가 투자 유치에 대한 기대감을 드러냈다. 아울러 속도전을 위한 지원도 약속했다. 이 대통령은 21일 울산 SK AI데이터센터 건설 현장을 방문했다. 이번 방문은 울산 지역 메가프로젝트 추진 상황을 점검하기 위해 이뤄졌다. 특히 이곳은 이 대통령이 취임 이...",
+      "keywords": [
+        "울산",
+        "SK",
+        "AI데이터센터",
+        "대통령이"
+      ],
+      "interview_insight": "'울산 SK AI데이터센터 찾은 李…“...'와 관련된 디지털 전환(DX) 프로젝트에서는 레거시 시스템과의 연동 안정성과 점진적 마이그레이션(Strangler Fig 패턴) 전략이 중요합니다.",
+      "target_role": "시스템 엔지니어 / IT 기획",
+      "raw_snippet": "이재명 대통령이 울산에서 메가프로젝트 일환으로 추진 중인 SK AI데이터센터를 찾아 지방 균형 발전과 추가 투자 유치에 대한 기대감을 드러냈다. 아울러 속도전을 위한 지원도 약속했다. 이 대통령은 21일 울산 SK AI데이터센터 건설 현장을 방문했다. 이번 방문은 울산 지역 메가프로젝트 추진 상황을 점검하기 위해 이뤄졌다. 특히 이곳은 이 대통령이 취임 이후 첫 지방 일정으로 참석했던 장소다. 울산 SK AI데이터센터는 2027년 말 운영을 개"
+    },
+    {
+      "title": "스마트안경 낄 틈 없게…인천시교육청, 중등교사 임용시험에 탐지기 배치",
+      "link": "https://www.etnews.com/20261121000044",
+      "source": "전자신문 (정책·사회)",
+      "published": "Sat, 21 Nov 2026 15:19:28 +0900",
+      "category": "AI/머신러닝",
+      "summary": "인천시교육청이 중등교사 임용시험장 5곳에 전담인력 10명과 탐지기를 배치해 첨단 전자기기를 이용한 부정행위를 막는다. 21일 시교육청에 따르면 오는 28일 치러지는 2027학년도 공립 중등교사 등 임용시험 1차 시험에서 스마트안경과 초소형 카메라, 무선 이어폰 등 전자기기 소지 여부를 집중 점검한다. 시교육청은 지난 20일 누리집에 시험 장소와 응시자 유의...",
+      "keywords": [
+        "중등교사",
+        "이용한",
+        "스마트안경",
+        "없게"
+      ],
+      "interview_insight": "'스마트안경 낄 틈 없게…인천시교육청,...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "인천시교육청이 중등교사 임용시험장 5곳에 전담인력 10명과 탐지기를 배치해 첨단 전자기기를 이용한 부정행위를 막는다. 21일 시교육청에 따르면 오는 28일 치러지는 2027학년도 공립 중등교사 등 임용시험 1차 시험에서 스마트안경과 초소형 카메라, 무선 이어폰 등 전자기기 소지 여부를 집중 점검한다. 시교육청은 지난 20일 누리집에 시험 장소와 응시자 유의사항을 공고했다. 시험장에는 인공지능(AI) 기기를 이용한 부정행위에 대응할 전담인력을 각"
+    },
+    {
       "title": "[AX 인재 키우는 대학]〈2〉동국대, 이차전지 전 과정에 AI 접목…산업 맞춤형 인재 양성",
       "link": "https://www.etnews.com/20261120000141",
       "source": "전자신문 (정책·사회)",
@@ -1507,6 +1524,23 @@
       "interview_insight": "'[수출 1조달러]이제부터 진짜 승부…...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
       "target_role": "인프라 / SRE 엔지니어",
       "raw_snippet": "한국무역협회(KITA)가 수출 1조달러 시대를 넘어 지속가능한 성장 생태계를 구축하기 위해 반도체 연구개발(R&D) 인력의 근로시간 유연화, 유지·보수·정비(MRO) 결합 수출, 기업 신규 투자와 국가 전력망·용수 인프라의 조기 연동 등 후속 실천과제를 정부와 산업계에 주문했다. 무협 국제무역통상연구원은 19일 이런 내용을 담은 '수출 1조달러 달성 의미와 과제' 보고서를 발간했다. 보고서는 '더 넓게·더 멀리·더 깊게' 실천과제를 구체적으로"
+    },
+    {
+      "title": "트럼프 “해외에 데이터센터 짓지 마라…막대한 세금 부과”",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001557",
+      "source": "IT조선",
+      "published": "2026-11-21 16:25:36",
+      "category": "인프라/DevOps",
+      "summary": "도널드 트럼프 미국 대통령이 해외에 데이터센터를 건설하는 기업에 막대한 세금을 부과하겠다고 경고했다. 중국과의 인공지능(AI) 기술 경쟁에서 우위를 유지하기 위해 핵심 AI 인프라인 데이터센터를 미국 내에 집중시키겠다는 구상이다.20일(현지시각) 파이낸셜타임스(FT)에 따르면 트럼프 대통령은 “기업들이 다른 나라에 데이터센터를 건설하도록 허용하지 않을 것”...",
+      "keywords": [
+        "트럼프",
+        "데이터센터를",
+        "해외에",
+        "막대한"
+      ],
+      "interview_insight": "'트럼프 “해외에 데이터센터 짓지 마라...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
+      "target_role": "인프라 / SRE 엔지니어",
+      "raw_snippet": "도널드 트럼프 미국 대통령이 해외에 데이터센터를 건설하는 기업에 막대한 세금을 부과하겠다고 경고했다. 중국과의 인공지능(AI) 기술 경쟁에서 우위를 유지하기 위해 핵심 AI 인프라인 데이터센터를 미국 내에 집중시키겠다는 구상이다.20일(현지시각) 파이낸셜타임스(FT)에 따르면 트럼프 대통령은 “기업들이 다른 나라에 데이터센터를 건설하도록 허용하지 않을 것”이라며 “미국에 건설하기를 원한다. 텍사스나 캘리포니아가 아니라면 웨스트버지니아에라도 건설하게 될 것”이라고 말했다.트럼프 대통령은 해외에 데이터센터를 건설하는 기업에 ‘막대한 세"
     },
     {
       "title": "맞춤형 예·적금 완판 인기… 취향 저격 상품 줄이어",
@@ -4382,6 +4416,91 @@
       "raw_snippet": "In Kubernetes v1.36, Declarative Validation for Kubernetes native types has reached General Availability (GA). For users, this means more reliable, predictable, and better-documented APIs. By moving to a declarative model, the project also unlocks the future ability to publish validation rules via O"
     },
     {
+      "title": "A Single Malicious Webpage Let Researchers Hijack Meta Muse and Access Private Chats",
+      "link": "https://thehackernews.com/2026/11/a-single-malicious-webpage-let.html",
+      "source": "The Hacker News",
+      "published": "Sat, 21 Nov 2026 17:23:07 +0530",
+      "category": "AI/머신러닝",
+      "summary": "A malicious webpage could extract a Meta Muse user's private conversations and stored memories from the assistant without triggering any approval prompt, researchers have shown. The same attack could ...",
+      "keywords": [
+        "the",
+        "Muse",
+        "and",
+        "user"
+      ],
+      "interview_insight": "'A Single Malicious W...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "A malicious webpage could extract a Meta Muse user's private conversations and stored memories from the assistant without triggering any approval prompt, researchers have shown. The same attack could be extended to reach the credentials Muse stores for the user's connected accounts. The work was a l"
+    },
+    {
+      "title": "GnuPG Warns Critical GPGME Flaw Could Expose App Data via Malicious OpenPGP Keys",
+      "link": "https://thehackernews.com/2026/11/gnupg-warns-critical-gpgme-flaw-could.html",
+      "source": "The Hacker News",
+      "published": "Sat, 21 Nov 2026 16:35:53 +0530",
+      "category": "보안/침해사고",
+      "summary": "A malicious OpenPGP key with an unusually long user ID can trigger a critical memory bug in GPGME, the standard library that programs use to work with GnuPG. The GnuPG project warned yesterday that th...",
+      "keywords": [
+        "GnuPG",
+        "GPGME",
+        "OpenPGP",
+        "bug"
+      ],
+      "interview_insight": "'GnuPG Warns Critical...' 취약점 대응에서는 SBOM(소프트웨어 자재명세서) 기반 취약점 전수 스캔과 mTLS 기반 제로트러스트 심층 방어가 최우선 방어선입니다.",
+      "target_role": "보안 엔지니어 / 인프라 담당자",
+      "raw_snippet": "A malicious OpenPGP key with an unusually long user ID can trigger a critical memory bug in GPGME, the standard library that programs use to work with GnuPG. The GnuPG project warned yesterday that the flaw could be used to steal data from affected applications and has released fixed versions. The b"
+    },
+    {
+      "title": "Attackers' AI Agents Found a Zero-Day in Medical-Imaging Software and Gained Root Access",
+      "link": "https://thehackernews.com/2026/11/attackers-ai-agents-found-zero-day-in.html",
+      "source": "The Hacker News",
+      "published": "Sat, 21 Nov 2026 16:33:17 +0530",
+      "category": "AI/머신러닝",
+      "summary": "Suspected China-linked hackers used autonomous AI agents to find a previously unknown flaw in MONAI Label, an open-source medical imaging server, and gain root access to a university server, Amazon Th...",
+      "keywords": [
+        "and",
+        "in",
+        "to",
+        "server"
+      ],
+      "interview_insight": "'Attackers' AI Agents...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "Suspected China-linked hackers used autonomous AI agents to find a previously unknown flaw in MONAI Label, an open-source medical imaging server, and gain root access to a university server, Amazon Threat Intelligence said this week. The flaw allows an attacker with no account to write files outside"
+    },
+    {
+      "title": "Signal Blocks AI Agents From Reading Private Chats via Screenshots on Android and iOS",
+      "link": "https://thehackernews.com/2026/11/signal-blocks-ai-agents-from-reading.html",
+      "source": "The Hacker News",
+      "published": "Sat, 21 Nov 2026 14:19:20 +0530",
+      "category": "AI/머신러닝",
+      "summary": "Signal has announced that it will restrict screenshots by default to stop artificial intelligence (AI) agents from reading private chats on Android and iOS devices, but conceded that the protection is...",
+      "keywords": [
+        "Signal",
+        "AI",
+        "on",
+        "Android"
+      ],
+      "interview_insight": "'Signal Blocks AI Age...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "Signal has announced that it will restrict screenshots by default to stop artificial intelligence (AI) agents from reading private chats on Android and iOS devices, but conceded that the protection is \"incomplete.\" The feature applies to agentic systems built into iOS 27 and on Android versions wher"
+    },
+    {
+      "title": "Hackers Exploit Critical VMware, Cisco, and Apache Flaws as Espionage Attacks Emerge",
+      "link": "https://thehackernews.com/2026/11/hackers-exploit-critical-vmware-cisco.html",
+      "source": "The Hacker News",
+      "published": "Sat, 21 Nov 2026 14:19:13 +0530",
+      "category": "클라우드 아키텍처",
+      "summary": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) on Friday added four flaws impacting Apache Roller, Cisco Expressway, SAP NetWeaver, and Broadcom VMware vCenter to its Known Exploited...",
+      "keywords": [
+        "and",
+        "VMware",
+        "Cisco",
+        "Apache"
+      ],
+      "interview_insight": "'Hackers Exploit Crit...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) on Friday added four flaws impacting Apache Roller, Cisco Expressway, SAP NetWeaver, and Broadcom VMware vCenter to its Known Exploited Vulnerabilities (KEV), citing evidence of active exploitation. The vulnerabilities are listed below"
+    },
+    {
       "title": "WhatsApp Patches 3 Security Flaws, Including Android Bug Suspected of Use in Scams",
       "link": "https://thehackernews.com/2026/11/whatsapp-patches-3-security-flaws.html",
       "source": "The Hacker News",
@@ -4396,7 +4515,7 @@
       ],
       "interview_insight": "'WhatsApp Patches 3 S...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
       "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "Meta-owned WhatsApp has addressed security vulnerabilities, including one impacting its Android app that it suspects may have been exploited in connection with scam messages. The vulnerability, tracked as CVE-2026-23871, has been described as a case of incomplete validation of external ad-reply URLs"
+      "raw_snippet": "Meta-owned WhatsApp has addressed security vulnerabilities, including one impacting its Android app that it suspects may have been exploited in connection with scam messages. The vulnerability, tracked as CVE-2026-23871 (CVSS score: 3.5), has been described as a case of incomplete validation of exte"
     },
     {
       "title": "Bazuka Android Malware Uses Fake Screen Overlays to Hide Credential Theft and Device Control",
@@ -5130,55 +5249,38 @@
       "raw_snippet": "Six flaws in Danfoss AK-SM800A refrigeration controllers could let a remote attacker take over a controller without logging in, Dutch security consultancy Midnight Blue said earlier this week. No patch is available, and the researchers say the newest firmware, version 5.4.0, does not fix the flaws. "
     },
     {
-      "title": "Retadup Worm Resurfaces 7 Years After Takedown to Spread CoffeeLoader Malware",
-      "link": "https://thehackernews.com/2026/11/retadup-worm-resurfaces-7-years-after.html",
-      "source": "The Hacker News",
-      "published": "Mon, 16 Nov 2026 18:03:18 +0530",
-      "category": "보안/침해사고",
-      "summary": "Cybersecurity researchers have disclosed details of a new variant of CoffeeLoader, a malware designed to deliver additional payloads to infected machines. \"On launch, the NSIS-based installer executab...",
-      "keywords": [
-        "to",
-        "of",
-        "CoffeeLoader",
-        "the"
-      ],
-      "interview_insight": "'Retadup Worm Resurfa...' 보안 전략에서는 침입 탐지(IDS/IPS) 로그의 실시간 SIEM 상관분석과 사고 발생 시 침해 호스트의 네트워크 자동 격리(SOAR)가 핵심입니다.",
-      "target_role": "보안 관제 / 엔지니어",
-      "raw_snippet": "Cybersecurity researchers have disclosed details of a new variant of CoffeeLoader, a malware designed to deliver additional payloads to infected machines. \"On launch, the NSIS-based installer executable dropped a file named '7z.dll' into a temporary directory and ran it through rundll32.exe,\" Kasper"
-    },
-    {
-      "title": "SANSAR Linux Cryptomining Malware Uses Modified NVIDIA Library to Hide GPU Activity",
-      "link": "https://thehackernews.com/2026/11/sansar-linux-cryptomining-malware-uses.html",
-      "source": "The Hacker News",
-      "published": "Mon, 16 Nov 2026 15:02:57 +0530",
+      "title": "Here are the top AI agents that can live in your text messages",
+      "link": "https://techcrunch.com/2026/11/21/all-the-ai-agents-that-can-live-in-your-text-messages/",
+      "source": "TechCrunch",
+      "published": "Sat, 21 Nov 2026 17:00:00 +0000",
       "category": "AI/머신러닝",
-      "summary": "A financially motivated threat activity cluster tracked as REF3364 has been attributed to a Linux-focused cryptocurrency mining operation that tampers with the readings used to detect high GPU workloa...",
+      "summary": "We created a list of the most notable AI agents that can live in your text messages, from general assistants to agents designed for families, travel, and work.",
       "keywords": [
-        "to",
-        "GPU",
+        "agents",
         "the",
-        "SANSAR"
-      ],
-      "interview_insight": "'SANSAR Linux Cryptom...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
-      "target_role": "MLOps / AI 서빙 엔지니어",
-      "raw_snippet": "A financially motivated threat activity cluster tracked as REF3364 has been attributed to a Linux-focused cryptocurrency mining operation that tampers with the readings used to detect high GPU workloads. Central to the intrusion is a toolkit called SANSAR, a Rust-based orchestrator that receives com"
-    },
-    {
-      "title": "Amazon Uncovers AI Agent Campaign Targeting LiteLLM, Dify, and Other Apps for API Keys",
-      "link": "https://thehackernews.com/2026/11/amazon-uncovers-ai-agent-campaign.html",
-      "source": "The Hacker News",
-      "published": "Mon, 16 Nov 2026 13:04:21 +0530",
-      "category": "AI/머신러닝",
-      "summary": "Attackers' AI agents have been hunting for weak spots in internet-exposed AI apps such as LiteLLM, One API, and Dify to steal the AI provider keys stored inside, according to the agents' own records. ...",
-      "keywords": [
         "AI",
-        "the",
-        "for",
+        "can"
+      ],
+      "interview_insight": "'Here are the top AI ...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "We created a list of the most notable AI agents that can live in your text messages, from general assistants to agents designed for families, travel, and work."
+    },
+    {
+      "title": "Is selling an AI version of your face to this microdrama startup the future of Hollywood?",
+      "link": "https://techcrunch.com/2026/11/21/is-selling-an-ai-version-of-your-face-to-this-microdrama-startup-the-future-of-hollywood/",
+      "source": "TechCrunch",
+      "published": "Sat, 21 Nov 2026 16:00:00 +0000",
+      "category": "AI/머신러닝",
+      "summary": "An actor has licensed his face to a microdrama startup — in a trend that's already popular in China. Experts question the long-term consequences if this becomes a trend in Hollywood, too.",
+      "keywords": [
+        "in",
+        "of",
+        "face",
         "to"
       ],
-      "interview_insight": "'Amazon Uncovers AI A...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
-      "target_role": "AI 엔지니어 / 백엔드 개발자",
-      "raw_snippet": "Attackers' AI agents have been hunting for weak spots in internet-exposed AI apps such as LiteLLM, One API, and Dify to steal the AI provider keys stored inside, according to the agents' own records. The records, which Amazon's threat intelligence team captured with decoy servers, describe stolen ke"
+      "interview_insight": "'Is selling an AI ver...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "An actor has licensed his face to a microdrama startup — in a trend that's already popular in China. Experts question the long-term consequences if this becomes a trend in Hollywood, too."
     },
     {
       "title": "Experts warn: Nearly everyone in AI is susceptible to a honey-trap scheme right now",
@@ -5366,6 +5468,91 @@
       "interview_insight": "'Elon Musk says Space...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
       "target_role": "AI/ML 개발자 / 데이터 엔지니어",
       "raw_snippet": "SpaceX CEO Elon Musk said the company has completed the design of a miniature rooftop cell tower that could provide better coverage to mobile phones and eliminate dead zones."
+    },
+    {
+      "title": "[이슈플러스] 앤트로픽 역대 최대 IPO…AI 거품론 잠재울까",
+      "link": "https://www.etnews.com/20261119000417",
+      "source": "전자신문 (AI·SW)",
+      "published": "Thu, 19 Nov 2026 17:01:04 +0900",
+      "category": "AI/머신러닝",
+      "summary": "프런티어 인공지능(AI) 모델 개발사 가운데 처음으로 미국 나스닥 상장에 도전하는 앤트로픽이 역대 최대 기업공개(IPO) 기록을 경신하게 됐다. 앤트로픽은 18일(현지시간) 공모가를 희망가격 범위(70~78달러) 상단보다 6.4% 높은 주당 83달러로 확정했다고 밝혔다. 공모 주식 수도 당초 8억2500만주에서 9억8000만주로 늘렸다. 블룸버그에 따르면 ...",
+      "keywords": [
+        "앤트로픽",
+        "역대",
+        "최대",
+        "IPO"
+      ],
+      "interview_insight": "'[이슈플러스] 앤트로픽 역대 최대 I...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "프런티어 인공지능(AI) 모델 개발사 가운데 처음으로 미국 나스닥 상장에 도전하는 앤트로픽이 역대 최대 기업공개(IPO) 기록을 경신하게 됐다. 앤트로픽은 18일(현지시간) 공모가를 희망가격 범위(70~78달러) 상단보다 6.4% 높은 주당 83달러로 확정했다고 밝혔다. 공모 주식 수도 당초 8억2500만주에서 9억8000만주로 늘렸다. 블룸버그에 따르면 앤트로픽 IPO에는 당초 공모 물량의 7배에 육박하는 투자 수요가 몰렸다. 이에 따라 앤트"
+    },
+    {
+      "title": "이스트소프트, K-FAST 확산 2년 수행…콘텐츠 300시간 AI 더빙",
+      "link": "https://www.etnews.com/20261119000416",
+      "source": "전자신문 (AI·SW)",
+      "published": "Thu, 19 Nov 2026 17:00:43 +0900",
+      "category": "AI/머신러닝",
+      "summary": "이스트소프트가 인공지능(AI) 더빙 특화 K-FAST(광고 기반 무료 스트리밍 TV) 확산 지원사업을 2년 연속 수행하며 기술 경쟁력을 강화했다고 19일 밝혔다. FAST 플랫폼 기반 K-콘텐츠 해외 유통을 지원하는 사업이다. 이스트소프트는 지난 2년간 드라마·예능·다큐멘터리 등 약 300시간 방송 콘텐츠를 AI로 더빙했다. AI 더빙 기술을 활용해 한국 ...",
+      "keywords": [
+        "FAST",
+        "콘텐츠",
+        "300시간",
+        "AI"
+      ],
+      "interview_insight": "'이스트소프트, K-FAST 확산 2년...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "이스트소프트가 인공지능(AI) 더빙 특화 K-FAST(광고 기반 무료 스트리밍 TV) 확산 지원사업을 2년 연속 수행하며 기술 경쟁력을 강화했다고 19일 밝혔다. FAST 플랫폼 기반 K-콘텐츠 해외 유통을 지원하는 사업이다. 이스트소프트는 지난 2년간 드라마·예능·다큐멘터리 등 약 300시간 방송 콘텐츠를 AI로 더빙했다. AI 더빙 기술을 활용해 한국 콘텐츠 중남미 시장 진출을 확대했다. 정부 지원사업으로 300시간 분량 콘텐츠를 더빙하고"
+    },
+    {
+      "title": "Retadup Worm Resurfaces 7 Years After Takedown to Spread CoffeeLoader Malware",
+      "link": "https://thehackernews.com/2026/11/retadup-worm-resurfaces-7-years-after.html",
+      "source": "The Hacker News",
+      "published": "Mon, 16 Nov 2026 18:03:18 +0530",
+      "category": "보안/침해사고",
+      "summary": "Cybersecurity researchers have disclosed details of a new variant of CoffeeLoader, a malware designed to deliver additional payloads to infected machines. \"On launch, the NSIS-based installer executab...",
+      "keywords": [
+        "to",
+        "of",
+        "CoffeeLoader",
+        "the"
+      ],
+      "interview_insight": "'Retadup Worm Resurfa...' 보안 전략에서는 침입 탐지(IDS/IPS) 로그의 실시간 SIEM 상관분석과 사고 발생 시 침해 호스트의 네트워크 자동 격리(SOAR)가 핵심입니다.",
+      "target_role": "보안 관제 / 엔지니어",
+      "raw_snippet": "Cybersecurity researchers have disclosed details of a new variant of CoffeeLoader, a malware designed to deliver additional payloads to infected machines. \"On launch, the NSIS-based installer executable dropped a file named '7z.dll' into a temporary directory and ran it through rundll32.exe,\" Kasper"
+    },
+    {
+      "title": "SANSAR Linux Cryptomining Malware Uses Modified NVIDIA Library to Hide GPU Activity",
+      "link": "https://thehackernews.com/2026/11/sansar-linux-cryptomining-malware-uses.html",
+      "source": "The Hacker News",
+      "published": "Mon, 16 Nov 2026 15:02:57 +0530",
+      "category": "AI/머신러닝",
+      "summary": "A financially motivated threat activity cluster tracked as REF3364 has been attributed to a Linux-focused cryptocurrency mining operation that tampers with the readings used to detect high GPU workloa...",
+      "keywords": [
+        "to",
+        "GPU",
+        "the",
+        "SANSAR"
+      ],
+      "interview_insight": "'SANSAR Linux Cryptom...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "A financially motivated threat activity cluster tracked as REF3364 has been attributed to a Linux-focused cryptocurrency mining operation that tampers with the readings used to detect high GPU workloads. Central to the intrusion is a toolkit called SANSAR, a Rust-based orchestrator that receives com"
+    },
+    {
+      "title": "Amazon Uncovers AI Agent Campaign Targeting LiteLLM, Dify, and Other Apps for API Keys",
+      "link": "https://thehackernews.com/2026/11/amazon-uncovers-ai-agent-campaign.html",
+      "source": "The Hacker News",
+      "published": "Mon, 16 Nov 2026 13:04:21 +0530",
+      "category": "AI/머신러닝",
+      "summary": "Attackers' AI agents have been hunting for weak spots in internet-exposed AI apps such as LiteLLM, One API, and Dify to steal the AI provider keys stored inside, according to the agents' own records. ...",
+      "keywords": [
+        "AI",
+        "the",
+        "for",
+        "to"
+      ],
+      "interview_insight": "'Amazon Uncovers AI A...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "Attackers' AI agents have been hunting for weak spots in internet-exposed AI apps such as LiteLLM, One API, and Dify to steal the AI provider keys stored inside, according to the agents' own records. The records, which Amazon's threat intelligence team captured with decoy servers, describe stolen ke"
     },
     {
       "title": "Want to see your live AI usage on your Mac’s icons? This clever new app lets you",
