@@ -1,17 +1,51 @@
 {
   "metadata": {
     "title": "TechPrep-AI: 개발자 취업 및 면접 대비 실시간 IT 트렌드 브리핑",
-    "last_updated": "2026-11-22 05:48:37 UTC",
-    "total_articles": 678,
+    "last_updated": "2026-11-22 19:14:07 UTC",
+    "total_articles": 687,
     "categories": {
-      "AI/머신러닝": 335,
-      "클라우드 아키텍처": 98,
-      "보안/침해사고": 93,
+      "클라우드 아키텍처": 99,
+      "AI/머신러닝": 341,
+      "보안/침해사고": 94,
       "인프라/DevOps": 77,
-      "IT 트렌드": 75
+      "IT 트렌드": 76
     }
   },
   "articles": [
+    {
+      "title": "[IP경영기업 탐방] 와이즈인컴퍼니, CSAP 인증 설문 SaaS '와이즈온'으로 공공기관 국민 개인정보보호 활동 지원한다",
+      "link": "https://www.etnews.com/20261119000390",
+      "source": "전자신문 (AI·SW)",
+      "published": "Sun, 22 Nov 2026 17:00:00 +0900",
+      "category": "클라우드 아키텍처",
+      "summary": "와이즈인컴퍼니(대표 김원표)가 설문조사와 데이터 분석 자동화 기술을 공공기관용 보안 클라우드 서비스로 넓혀 가고 있다. 기반은 리서치 현장에서 반복되는 업무를 기술로 만들고, 이를 특허와 상표로 확보하는 지식재산(IP) 기술경영이다. 설문 설계부터 응답 수집, 통계분석, 보고서 작성까지 이어지는 과정을 하나의 플랫폼에서 자동으로 처리하는 것이 핵심이다. 와...",
+      "keywords": [
+        "와이즈인컴퍼니",
+        "설문",
+        "IP경영기업",
+        "탐방"
+      ],
+      "interview_insight": "'[IP경영기업 탐방] 와이즈인컴퍼니,...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "와이즈인컴퍼니(대표 김원표)가 설문조사와 데이터 분석 자동화 기술을 공공기관용 보안 클라우드 서비스로 넓혀 가고 있다. 기반은 리서치 현장에서 반복되는 업무를 기술로 만들고, 이를 특허와 상표로 확보하는 지식재산(IP) 기술경영이다. 설문 설계부터 응답 수집, 통계분석, 보고서 작성까지 이어지는 과정을 하나의 플랫폼에서 자동으로 처리하는 것이 핵심이다. 와이즈인컴퍼니는 2003년 설립 이후 공공기관과 기업의 조사·컨설팅, 빅데이터 연구개발(R&"
+    },
+    {
+      "title": "SKT 에이닷을 '모두의 AI'로 전환…'에이닷올' 내달 출시",
+      "link": "https://www.etnews.com/20261120000272",
+      "source": "전자신문 (AI·SW)",
+      "published": "Sun, 22 Nov 2026 16:00:00 +0900",
+      "category": "AI/머신러닝",
+      "summary": "SK텔레콤이 자사 인공지능(AI) 에이전트 에이닷을 확대 개편해 정부 정책에 맞춘 '모두의 AI' 서비스로 전환한다. 별도 플랫폼을 새로 개발하는 대신 1000만이 넘는 가입자 기반을 흡수해 시장 연착륙과 초기 수요 선점을 노린다. 22일 업계에 따르면 SK텔레콤은 다음달 에이닷을 모두의 AI 사업 방향에 맞춰 새롭게 개편한다. 이에 따라 에이닷 브랜드명은...",
+      "keywords": [
+        "에이닷을",
+        "AI",
+        "모두의",
+        "에이닷올"
+      ],
+      "interview_insight": "'SKT 에이닷을 '모두의 AI'로 전...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "SK텔레콤이 자사 인공지능(AI) 에이전트 에이닷을 확대 개편해 정부 정책에 맞춘 '모두의 AI' 서비스로 전환한다. 별도 플랫폼을 새로 개발하는 대신 1000만이 넘는 가입자 기반을 흡수해 시장 연착륙과 초기 수요 선점을 노린다. 22일 업계에 따르면 SK텔레콤은 다음달 에이닷을 모두의 AI 사업 방향에 맞춰 새롭게 개편한다. 이에 따라 에이닷 브랜드명은 '에이닷올(A.LL)'로 변경된다. SK텔레콤 관계자는 “에이닷올은 기존 에이닷을 한 단"
+    },
     {
       "title": "“AI 클로드, 수학 난제 리만가설 증명” 주장…앤트로픽 주가는 급락",
       "link": "https://www.etnews.com/20261122000077",
@@ -239,7 +273,7 @@
       "source": "전자신문 (AI·SW)",
       "published": "Fri, 20 Nov 2026 16:23:33 +0900",
       "category": "인프라/DevOps",
-      "summary": "우리나라가 국제연합(유엔)의 '2026년 전자정부평가'에서 12년 만에 세계 1위를 되찾았다. 국민 맞춤형 온라인 서비스와 통신 인프라, 디지털 활용 역량 모두 고르게 좋은 평가를 받은 결과다. 행정안전부는 유엔이 실시한 '2026년 전자정부평가'에서 대한민국이 194개 국가 가운데 세계 1위를 차지했다고 20일 밝혔다. 종합 1위에 오른 것은 2014년 ...",
+      "summary": "우리나라가 국제연합(유엔)의 '2026년 전자정부평가'에서 12년 만에 세계 1위를 되찾았다. 국민 맞춤형 온라인 서비스와 통신 인프라, 디지털 활용 역량 모두 고르게 좋은 평가를 받은 결과다. 행정안전부는 유엔이 실시한 '2026년 전자정부평가'에서 대한민국이 194개 국가 가운데 세계 1위를 차지했다고 말했다. 종합 1위에 오른 것은 2014년 이후 1...",
       "keywords": [
         "전자정부평가",
         "세계",
@@ -248,7 +282,7 @@
       ],
       "interview_insight": "'한국, 유엔 전자정부평가 12년만에 ...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
       "target_role": "인프라 / SRE 엔지니어",
-      "raw_snippet": "우리나라가 국제연합(유엔)의 '2026년 전자정부평가'에서 12년 만에 세계 1위를 되찾았다. 국민 맞춤형 온라인 서비스와 통신 인프라, 디지털 활용 역량 모두 고르게 좋은 평가를 받은 결과다. 행정안전부는 유엔이 실시한 '2026년 전자정부평가'에서 대한민국이 194개 국가 가운데 세계 1위를 차지했다고 20일 밝혔다. 종합 1위에 오른 것은 2014년 이후 12년 만이다. 우리나라는 지난 2020년 2위, 2022년 3위, 2024년 4위로"
+      "raw_snippet": "우리나라가 국제연합(유엔)의 '2026년 전자정부평가'에서 12년 만에 세계 1위를 되찾았다. 국민 맞춤형 온라인 서비스와 통신 인프라, 디지털 활용 역량 모두 고르게 좋은 평가를 받은 결과다. 행정안전부는 유엔이 실시한 '2026년 전자정부평가'에서 대한민국이 194개 국가 가운데 세계 1위를 차지했다고 말했다. 종합 1위에 오른 것은 2014년 이후 12년 만이다. 우리나라는 지난 2020년 2위, 2022년 3위, 2024년 4위로 순위가"
     },
     {
       "title": "이강수 더존비즈온 부회장, '중견기업인의 날' 대통령표창 수상",
@@ -674,40 +708,6 @@
       "interview_insight": "'비자·마스터카드·JP모건 고객정보 유...' 취약점 대응에서는 SBOM(소프트웨어 자재명세서) 기반 취약점 전수 스캔과 mTLS 기반 제로트러스트 심층 방어가 최우선 방어선입니다.",
       "target_role": "보안 엔지니어 / 인프라 담당자",
       "raw_snippet": "글로벌 결제기업 비자와 마스터카드, 미국 최대 은행 JP모건체이스의 고객 수천명에 관한 정보가 랜섬웨어 공격으로 유출됐다. 기업 내부 시스템이 아닌 외부 서비스 제공업체가 해킹당하면서 고객정보가 노출된 것으로 파악됐다. 19일(현지시간) 월스트리트저널(WSJ)에 따르면 비자, 마스터카드, JP모건체이스는 외부 협력업체를 겨냥한 사이버 공격으로 일부 고객정보가 유출됐다고 밝혔다. 다만 결제망과 금융서비스 등 핵심 시스템에는 영향을 미치지 않았다는"
-    },
-    {
-      "title": "앤트로픽, 상장 첫날 97.17달러로 마감…공모가 대비 17% 상승",
-      "link": "https://www.etnews.com/20261120000001",
-      "source": "전자신문 (AI·SW)",
-      "published": "Fri, 20 Nov 2026 06:24:31 +0900",
-      "category": "AI/머신러닝",
-      "summary": "생성형 인공지능(AI) 모델 '클로드' 개발사 앤트로픽이 미국 나스닥 상장 첫날 공모가보다 약 17% 높은 가격에 거래를 마쳤다. 19일(현지시간) 나스닥 시장에 상장한 앤트로픽 주가는 이날 공모가 83달러 대비 17.07% 오른 97.17달러에 거래를 마감했다. 앞서 앤트로픽은 주당 111.5달러로 거래를 시작했다. 이는 전날 확정된 공모가 83달러와 비...",
-      "keywords": [
-        "공모가",
-        "17",
-        "거래를",
-        "앤트로픽"
-      ],
-      "interview_insight": "'앤트로픽, 상장 첫날 97.17달러로...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "생성형 인공지능(AI) 모델 '클로드' 개발사 앤트로픽이 미국 나스닥 상장 첫날 공모가보다 약 17% 높은 가격에 거래를 마쳤다. 19일(현지시간) 나스닥 시장에 상장한 앤트로픽 주가는 이날 공모가 83달러 대비 17.07% 오른 97.17달러에 거래를 마감했다. 앞서 앤트로픽은 주당 111.5달러로 거래를 시작했다. 이는 전날 확정된 공모가 83달러와 비교해 약 34.3% 오른 금액이다. 시초가 기준 완전희석 시가총액은 약 2조달러로 일론 머"
-    },
-    {
-      "title": "[KB유니콘클럽, 기술을 사업으로⑥]엑스파이, 숙련자 판단을 공장 자산으로…'엑스퍼트X' 개발",
-      "link": "https://www.etnews.com/20261119000066",
-      "source": "전자신문 (AI·SW)",
-      "published": "Fri, 20 Nov 2026 04:00:00 +0900",
-      "category": "AI/머신러닝",
-      "summary": "공장에서 설비 알람이 울리면 담당자는 매뉴얼을 찾고 선임자에게 과거 해결 방법을 묻는다. '엑스퍼트X'는 설비 데이터와 유사 고장 사례, 조치 결과를 함께 제시해 대응을 돕고, 새로운 조치 결과도 다음 문제 해결에 활용하도록 축적한다. 제조 인공지능(AI) 에이전트 기업 엑스파이(대표 이병석)는 숙련자의 판단과 해결 경험을 공장의 지식 자산으로 남기는 엑스...",
-      "keywords": [
-        "엑스퍼트X",
-        "기술을",
-        "엑스파이",
-        "자산으로"
-      ],
-      "interview_insight": "'[KB유니콘클럽, 기술을 사업으로⑥]...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
-      "target_role": "AI 엔지니어 / 백엔드 개발자",
-      "raw_snippet": "공장에서 설비 알람이 울리면 담당자는 매뉴얼을 찾고 선임자에게 과거 해결 방법을 묻는다. '엑스퍼트X'는 설비 데이터와 유사 고장 사례, 조치 결과를 함께 제시해 대응을 돕고, 새로운 조치 결과도 다음 문제 해결에 활용하도록 축적한다. 제조 인공지능(AI) 에이전트 기업 엑스파이(대표 이병석)는 숙련자의 판단과 해결 경험을 공장의 지식 자산으로 남기는 엑스퍼트X(ExpertX)를 개발하고 있다. LS엠트론과 HD현대삼호, CMTX 등에서 기술을"
     },
     {
       "title": "AI 해킹 도구로 韓 대학 공격 정황…공통 업무시스템 보안 비상",
@@ -1475,21 +1475,55 @@
       "raw_snippet": "경기도의회 미래과학협력위원회가 올해 행정사무감사에서 경기도의 미래산업 육성 구상이 실제 예산과 기업지원 성과로 이어지고 있는지 집중 점검했다. 인공지능(AI)·반도체 분야 투자 기조와 사업 예산 축소 사이의 간극을 짚고, 감사 결과를 내년도 예산 심사에 반영해 정책의 실행력을 높이겠다는 방침이다. 미래과학협력위원회는 지난 9일부터 18일까지 AI국·국제협력국·미래성장산업국과 경기도경제과학진흥원·차세대융합기술연구원·경기테크노파크·경기대진테크노파크"
     },
     {
-      "title": "中서 한한령 빗장 푼 李…3박 4일 ASEAN·APEC 마무리",
-      "link": "https://www.etnews.com/20261119000313",
-      "source": "전자신문 (정책·사회)",
-      "published": "Thu, 19 Nov 2026 22:00:00 +0900",
+      "title": "“앨리스 황은 얼굴마담… 中 반도체 밀수 주도자는 따로”",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001573",
+      "source": "IT조선",
+      "published": "2026-11-22 16:07:29",
       "category": "AI/머신러닝",
-      "summary": "이재명 대통령이 3박 4일간의 동남아시아국가연합(ASEAN·아세안)·아시아태평양경제협력체(APEC) 순방을 마쳤다. 이 대통령은 역내 국가들에 AI(인공지능) 대전환을 통한 공동 번영과 공급망 회복을 제안하고 미·중·러 정상에게 한반도 문제에 대한 우리 정부의 입장도 전달했다. 특히 한중 정상회담을 통해 사실상 한류 제한령(한한령·限韓令) 해제를 이끌어낸 ...",
+      "summary": "젠슨 황 전 엔비디아 최고경영자(CEO)의 불륜 상대로 중국에 엔비디아 인공지능(AI) 반도체를 밀반입한 의혹을 받는 앨리스 황(Alice Huang)은 사업의 ‘대외적인 얼굴’에 불과했다는 외신 보도가 나왔다. 실제 밀반출 의혹의 중심에는 다른 인물이 있었던 것으로 알려졌다. 미국 월스트리트저널(WSJ)은 21일(현지시각) 52세 중국 국적 사업가 리밍(...",
       "keywords": [
-        "3박",
-        "한한령",
-        "4일",
-        "ASEAN"
+        "엔비디아",
+        "앨리스",
+        "AI",
+        "반도체를"
       ],
-      "interview_insight": "'中서 한한령 빗장 푼 李…3박 4일 ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "interview_insight": "'“앨리스 황은 얼굴마담… 中 반도체 ...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "젠슨 황 전 엔비디아 최고경영자(CEO)의 불륜 상대로 중국에 엔비디아 인공지능(AI) 반도체를 밀반입한 의혹을 받는 앨리스 황(Alice Huang)은 사업의 ‘대외적인 얼굴’에 불과했다는 외신 보도가 나왔다. 실제 밀반출 의혹의 중심에는 다른 인물이 있었던 것으로 알려졌다. 미국 월스트리트저널(WSJ)은 21일(현지시각) 52세 중국 국적 사업가 리밍(Li Ming)이 미국의 대중국 수출통제 대상인 엔비디아 AI 반도체를 중국으로 밀반입한 의혹을 받는 기업 네트워크의 핵심 운영자였다고 사안에 정통한 관계자들을 인용해 보도했다.젠"
+    },
+    {
+      "title": "AI와 대화하고 가상 서킷 달리고… 게임쇼 누빈 크랙·현대차 [지스타2026]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001572",
+      "source": "IT조선",
+      "published": "2026-11-22 15:14:02",
+      "category": "AI/머신러닝",
+      "summary": "인공지능(AI) 캐릭터와 대화해 마왕을 물리치고, 운전대와 페달로 가상 서킷을 달린다. 19일부터 22일까지 부산 벡스코에서 열린 ‘지스타 2026’에서는 비(非)게임사들도 관람객에게 즐길 거리를 선보였다. 뤼튼테크놀로지스는 AI 채팅에 게임 미션을 더하고, 현대자동차는 고성능 차량을 레이싱 게임에 접목했다. 제품과 서비스를 직접 체험하는 놀이로 바꿔 게임...",
+      "keywords": [
+        "크랙",
+        "AI",
+        "가상",
+        "게임"
+      ],
+      "interview_insight": "'AI와 대화하고 가상 서킷 달리고… ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
       "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "이재명 대통령이 3박 4일간의 동남아시아국가연합(ASEAN·아세안)·아시아태평양경제협력체(APEC) 순방을 마쳤다. 이 대통령은 역내 국가들에 AI(인공지능) 대전환을 통한 공동 번영과 공급망 회복을 제안하고 미·중·러 정상에게 한반도 문제에 대한 우리 정부의 입장도 전달했다. 특히 한중 정상회담을 통해 사실상 한류 제한령(한한령·限韓令) 해제를 이끌어낸 것도 주요 성과로 꼽힌다. 이재명 대통령은 19일 3박 4일 동안의 동남아시아국가연합(AS"
+      "raw_snippet": "인공지능(AI) 캐릭터와 대화해 마왕을 물리치고, 운전대와 페달로 가상 서킷을 달린다. 19일부터 22일까지 부산 벡스코에서 열린 ‘지스타 2026’에서는 비(非)게임사들도 관람객에게 즐길 거리를 선보였다. 뤼튼테크놀로지스는 AI 채팅에 게임 미션을 더하고, 현대자동차는 고성능 차량을 레이싱 게임에 접목했다. 제품과 서비스를 직접 체험하는 놀이로 바꿔 게임 팬들과의 접점을 넓힌 것이다.뤼튼은 제1전시장에 200부스 규모로 AI 캐릭터 채팅 서비스 ‘크랙’ 체험관을 꾸렸다. 부스 외벽을 감싼 폭 40m의 파노라마 LED 화면에는 크랙"
+    },
+    {
+      "title": "아마존, 이스라엘 AI 스타트업 75억달러 인수 임박",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001570",
+      "source": "IT조선",
+      "published": "2026-11-22 14:26:48",
+      "category": "AI/머신러닝",
+      "summary": "세계 최대 전자상거래 기업 아마존이 이스라엘 인공지능(AI) 스타트업 데카르트(Decart)를 약 75억달러(약 10조1000억원)에 인수하는 방안을 추진하고 있다. 22일 영국 파이낸셜타임스(FT)에 따르면 아마존은 데카르트를 인수하기 위한 막바지 협상을 진행하고 있다. 데카르트는 2023년 이스라엘 출신 엔지니어들이 설립한 AI 스타트업이다. AI 모델...",
+      "keywords": [
+        "AI",
+        "이스라엘",
+        "있다",
+        "스타트업"
+      ],
+      "interview_insight": "'아마존, 이스라엘 AI 스타트업 75...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "세계 최대 전자상거래 기업 아마존이 이스라엘 인공지능(AI) 스타트업 데카르트(Decart)를 약 75억달러(약 10조1000억원)에 인수하는 방안을 추진하고 있다. 22일 영국 파이낸셜타임스(FT)에 따르면 아마존은 데카르트를 인수하기 위한 막바지 협상을 진행하고 있다. 데카르트는 2023년 이스라엘 출신 엔지니어들이 설립한 AI 스타트업이다. AI 모델이 반도체의 연산 자원을 효율적으로 사용하도록 지원하는 소프트웨어 기술을 개발하고 있다. 기존 반도체로 더 많은 AI 연산을 처리할 수 있도록 해 데이터센터 운영 비용을 줄이는 것"
     },
     {
       "title": "트럼프 “좋지 않은 일”… 美 FBI·농무부 잇단 해킹 의혹",
@@ -1832,40 +1866,6 @@
       "raw_snippet": "우리자산운용은 우리미국단기채공모주증권자투자신탁(채권혼합) 펀드가 생성형 인공지능(AI) 모델 클로드 개발사인 앤트로픽의 기업공개(IPO)에 참여해 신주를 배정받았다고 20일 밝혔다. 미국 단기채 공모주 펀드는 글로벌 자산운용사 누버거버먼(Neuberger Berman)과의 파트너십을 기반으로 운용된다. 누버거버먼이 글로벌 IPO 주관사로부터 직접 배정받은 기관투자자 물량을 펀드에 편입하는 구조다.우리자산운용은 AI 산업의 성장성을 긍정적으로 평가해 이번 IPO에 참여했다고 설명했다. 이로써 펀드가 올해 참여한 해외 IPO는 총 27"
     },
     {
-      "title": "美 캘리포니아, 엔비디아 조사 착수… 첨단칩 中 유출 수사",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001540",
-      "source": "IT조선",
-      "published": "2026-11-20 16:29:42",
-      "category": "AI/머신러닝",
-      "summary": "미국 캘리포니아주가 엔비디아의 첨단 인공지능(AI) 반도체와 기밀정보의 중국 유출 의혹을 조사한다. 관련 위험을 투자자에게 제대로 알렸는지가 핵심이다. 젠슨 황 전 최고경영자(CEO)를 둘러싼 논란이 증권법 위반 여부를 따지는 조사로 번졌다.19일(현지시각) AFP통신과 블룸버그통신 등에 따르면 롭 본타 캘리포니아주 법무장관은 엔비디아가 중국의 첨단 반도체...",
-      "keywords": [
-        "엔비디아",
-        "조사",
-        "유출",
-        "첨단"
-      ],
-      "interview_insight": "'美 캘리포니아, 엔비디아 조사 착수…...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
-      "target_role": "MLOps / AI 서빙 엔지니어",
-      "raw_snippet": "미국 캘리포니아주가 엔비디아의 첨단 인공지능(AI) 반도체와 기밀정보의 중국 유출 의혹을 조사한다. 관련 위험을 투자자에게 제대로 알렸는지가 핵심이다. 젠슨 황 전 최고경영자(CEO)를 둘러싼 논란이 증권법 위반 여부를 따지는 조사로 번졌다.19일(현지시각) AFP통신과 블룸버그통신 등에 따르면 롭 본타 캘리포니아주 법무장관은 엔비디아가 중국의 첨단 반도체 확보와 관련된 위험을 투자자와 대중에게 오도했는지 조사하고 있다고 밝혔다. 주 법무부는 엔비디아에 조사 소환장을 발부하고 관련 자료 제출을 요구했다.본타 장관은 성명에서 엔비디아"
-    },
-    {
-      "title": "[마감] 1월로 돌아간 코스피… 5% 급락 4800선 마감",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001538",
-      "source": "IT조선",
-      "published": "2026-11-20 16:06:00",
-      "category": "클라우드 아키텍처",
-      "summary": "코스피가 5% 넘게 급락하며 4800선에서 장을 마쳤다. 외국인의 대규모 순매도 속 삼성전자와 SK하이닉스가 큰 폭으로 하락했다. 중국 클라우드 업체의 기업용 솔리드스테이트드라이브(SSD) 발주 축소로 낸드 가격 하락 시점이 앞당겨질 것이라는 전망이 나오면서 국내 메모리 반도체 업체의 실적 우려가 투자심리를 떨어트렸다.20일 한국거래소에 따르면 코스피는 전...",
-      "keywords": [
-        "마감",
-        "업체의",
-        "코스피는",
-        "내린"
-      ],
-      "interview_insight": "'[마감] 1월로 돌아간 코스피… 5%...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
-      "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "코스피가 5% 넘게 급락하며 4800선에서 장을 마쳤다. 외국인의 대규모 순매도 속 삼성전자와 SK하이닉스가 큰 폭으로 하락했다. 중국 클라우드 업체의 기업용 솔리드스테이트드라이브(SSD) 발주 축소로 낸드 가격 하락 시점이 앞당겨질 것이라는 전망이 나오면서 국내 메모리 반도체 업체의 실적 우려가 투자심리를 떨어트렸다.20일 한국거래소에 따르면 코스피는 전 거래일보다 5.21% 내린 4869.96에 마감했다. 종가 기준 1월 16일(4840.74) 이후 가장 낮다. 코스피는 4.08% 내린 4928.51에 출발한 뒤 장중 낙폭을 키"
-    },
-    {
       "title": "[리뷰] 니콘의 창의력에 기본기를 입힌 입문형 미러리스 카메라, Z5IIC",
       "link": "https://it.donga.com/109979/",
       "source": "IT동아",
@@ -1968,6 +1968,23 @@
       "raw_snippet": "[IT동아 남시현 기자] AI 에이전트와 모델 콘텍스트 프로토콜(MCP)의 등장은 기존의 IT 업계 전반의 격을 한층 더 높이고 있다. 기존에 인력으로 수행하거나 수동으로 구성해야했던 과정들이 자동화하고, 서로 다른 서비스들 간에도 유기적으로 연결되면서 수행할 수 있는 작업과 성과가 극적으로 향상된 것이다. 이를 가장 빠르게 받아들인 분야는 금융권이다. 금융권은 숫자라는 정형 데이터를 중심으로 이뤄진 분야다보니 핵심 분야를 제외한 일반 활용 환경에서는 빠르게 AI를 받아들였다. 특히 증권사들은 MCP와 오픈 API 플랫폼을 결합해 "
     },
     {
+      "title": "해양수산과학기술진흥원, 올 한해 예비창업부터 ‘오션스타’까지 단계별 창업 지원에 집중",
+      "link": "https://it.donga.com/109985/",
+      "source": "IT동아",
+      "published": "Fri, 20 Nov 2026 17:02:38 +0900",
+      "category": "IT 트렌드",
+      "summary": "[IT동아] 친환경 선박, 스마트 양식, 해양바이오, 해양 모빌리티. 기후위기 대응과 디지털 전환이 맞물리면서 바다를 무대로 한 신산업이 빠르게 커지고 있다. 하지만 해양수산 분야 스타트업이 시장에 안착하기란 여전히 쉽지 않다. 초기 투자비가 크고, 실증 환경도 확보하기 어려우며, 투자금을 회수하는 시간도 오래 걸리기 때문이다. 연구실 속 기술이 시장으로 ...",
+      "keywords": [
+        "해양수산",
+        "창업",
+        "오션스타",
+        "예비"
+      ],
+      "interview_insight": "'해양수산과학기술진흥원, 올 한해 예비...' 이슈처럼 분산 신원(DID)/인증 아키텍처 도입 시, 중앙 DB 탈취 위험을 원천 차단하기 위한 개인키 소셜 복구와 영지식 증명(ZKP) 설계가 핵심입니다.",
+      "target_role": "플랫폼 / 보안 엔지니어",
+      "raw_snippet": "[IT동아] 친환경 선박, 스마트 양식, 해양바이오, 해양 모빌리티. 기후위기 대응과 디지털 전환이 맞물리면서 바다를 무대로 한 신산업이 빠르게 커지고 있다. 하지만 해양수산 분야 스타트업이 시장에 안착하기란 여전히 쉽지 않다. 초기 투자비가 크고, 실증 환경도 확보하기 어려우며, 투자금을 회수하는 시간도 오래 걸리기 때문이다. 연구실 속 기술이 시장으로 넘어가는 문턱도 높다. 해양수산 R D(연구개발)의 사업화 성과는 10억 원당 0.46건으로, 정부 R D 전체 평균(1.11건)의 41% 수준에 머문다. 해양수산과학기술진흥원(원"
+    },
+    {
       "title": "와이크 “자전거 관리도, 여행도 편리하게…자전거 생활 인프라 구축한다” [인천대 x IT동아]",
       "link": "https://it.donga.com/109977/",
       "source": "IT동아",
@@ -2017,6 +2034,23 @@
       "interview_insight": "'[위클리크립토] 두나무·빗썸 3분기 ...' 취약점 대응에서는 SBOM(소프트웨어 자재명세서) 기반 취약점 전수 스캔과 mTLS 기반 제로트러스트 심층 방어가 최우선 방어선입니다.",
       "target_role": "보안 엔지니어 / 인프라 담당자",
       "raw_snippet": "[IT동아 한만혁 기자] 디지털자산(가상자산)과 블록체인은 금융, 경제를 넘어 산업 전반에 많은 영향을 끼치고 있습니다. 스테이블코인은 국경을 넘는 결제 수단으로 자리 잡고 있으며, 블록체인 기술은 산업 전반의 인프라로 확장되고 있습니다. [위클리크립토]는 빠르게 변하고 있는 디지털자산·블록체인 업계의 주요 소식을 전합니다. 출처=셔터스톡 두나무·빗썸 3분기 동반 적자 두나무와 빗썸이 3분기 실적에서 나란히 적자를 기록했다. 업비트를 운영하는 두나무의 3분기 연결 기준 영업수익(매출)은 1517억 원으로 전년 동기 3859억 원보다"
+    },
+    {
+      "title": "[한국 청년세대의 발견] 5부(완) - 청년의 사회 첫출발, 누가 언제 무엇을 책임해야 하나",
+      "link": "https://it.donga.com/109983/",
+      "source": "IT동아",
+      "published": "Fri, 20 Nov 2026 14:39:24 +0900",
+      "category": "AI/머신러닝",
+      "summary": "※ 서울시 미래청년기획관을 역임한 김철희 연세대 행정대학원 객원교수의 연재(5회)를 통해, AI 시대 우리 청년들의 현 상황을 면밀히 들여다봅니다. 청년이 처한 환경과 그들의 선택을 살피고, 예산의 쓰임과 문제를 알고도 정책을 바꾸기 어려운 구조도 짚으며, 현장 경험과 자료를 바탕으로 정부·지역·대학·기업의 책임과 실행 가능한 해법을 찾아봅니다. 본문 의견...",
+      "keywords": [
+        "일을",
+        "청년이",
+        "다음",
+        "있다"
+      ],
+      "interview_insight": "'[한국 청년세대의 발견] 5부(완) ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "※ 서울시 미래청년기획관을 역임한 김철희 연세대 행정대학원 객원교수의 연재(5회)를 통해, AI 시대 우리 청년들의 현 상황을 면밀히 들여다봅니다. 청년이 처한 환경과 그들의 선택을 살피고, 예산의 쓰임과 문제를 알고도 정책을 바꾸기 어려운 구조도 짚으며, 현장 경험과 자료를 바탕으로 정부·지역·대학·기업의 책임과 실행 가능한 해법을 찾아봅니다. 본문 의견과 방향 등은 IT동아의 편집 기조와 다를 수 있습니다. 1부 - 대학 졸업은 사회 출발이 아니다 ( https://it.donga.com/109732/ ) 2부 - 문제는 청년이"
     },
     {
       "title": "'국산 LLM과 NPU로 AI 추론 실증·사업화'··· 업스테이지·퓨리오사AI, 협업 스타트업 모집",
@@ -3190,40 +3224,6 @@
       "interview_insight": "'티와이글로벌 \"문제는 화장품 용기였다...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
       "target_role": "AI/ML 개발자 / 데이터 엔지니어",
       "raw_snippet": "[신용보증기금×더인벤션랩×IT동아] 신용보증기금이 주관하고 더인벤션랩이 액셀러레이터로 참여하는 ‘Start-up NEST 19기’는 유망 스타트업의 스케일업을 돕는 대표 창업 육성 플랫폼입니다. 기업성장·투자연계·글로벌진출 등 맞춤형 트랙과 투자사·대중견기업 1:1 매칭을 통해 실질적인 성장을 지원합니다. IT동아는 Start-up NEST 19기를 통해 한 단계 도약하고 있는 혁신 스타트업을 소개합니다. 최환욱 티와이글로벌 대표 / 출처=IT동아 [IT동아 김영우 기자] 마스카라나 립 틴트 같은 색조 화장품을 쓰다 보면 용량이 절"
-    },
-    {
-      "title": "[위클리AI] 오픈AI·앤트로픽·아마존, 이미지부터 쇼핑까지 신규 서비스 쏟아졌다",
-      "link": "https://it.donga.com/109882/",
-      "source": "IT동아",
-      "published": "Tue, 10 Nov 2026 16:30:14 +0900",
-      "category": "클라우드 아키텍처",
-      "summary": "[IT동아 박귀임 기자] 인공지능(AI)이 세상을 바꾸고 있습니다. AI는 이제 우리 일상에서 떼려야 뗄 수 없는 핵심적인 요소입니다. 한 주간 세계를 들썩이게 만든 글로벌 빅테크 기업부터 우리 일상에 직접 영향을 미칠 새로운 AI 소식까지 핵심만 짚어드립니다. 오픈AI, 이미지 2.6 출시···움직이는 이미지까지 만들어 오픈AI가 이미지 2.6을 출시했습...",
-      "keywords": [
-        "클로드",
-        "있습니다",
-        "페이블",
-        "이미지"
-      ],
-      "interview_insight": "'[위클리AI] 오픈AI·앤트로픽·아마...'와 같은 인프라 운영에서는 리소스 태깅 자동화와 Spot/Graviton 인스턴스 전환을 통한 FinOps 비용 절감 및 유휴 자원 회수가 핵심 경쟁력입니다.",
-      "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "[IT동아 박귀임 기자] 인공지능(AI)이 세상을 바꾸고 있습니다. AI는 이제 우리 일상에서 떼려야 뗄 수 없는 핵심적인 요소입니다. 한 주간 세계를 들썩이게 만든 글로벌 빅테크 기업부터 우리 일상에 직접 영향을 미칠 새로운 AI 소식까지 핵심만 짚어드립니다. 오픈AI, 이미지 2.6 출시···움직이는 이미지까지 만들어 오픈AI가 이미지 2.6을 출시했습니다 / 출처=오픈AI 글로벌 AI 기업 오픈AI(OpenAI)가 11월 4일(이하 현지 시간) 이미지 생성 모델 '이미지 2.6(Images 2.6)'을 자사 AI 서비스 챗GP"
-    },
-    {
-      "title": "K-혁신기업 통합관 싱가포르 스위치 달궈…K 스타트업 투자 상담·계약 성과 풍성",
-      "link": "https://it.donga.com/109880/",
-      "source": "IT동아",
-      "published": "Tue, 10 Nov 2026 15:11:28 +0900",
-      "category": "AI/머신러닝",
-      "summary": "[IT동아 한만혁 기자] 중소벤처기업부와 창업진흥원이 창업 지원기관 10곳과 손을 잡고 ‘싱가포르 기술·혁신 주간(SWITCH, Singapore Week of Innovation and Technology, 이하 스위치)’에 참가, K-혁신기업 통합관을 만들었다. 이곳에 참여한 우리나라 유망 스타트업 26곳은 투자 상담, 피칭 상위 등극 등 풍성한 성과를...",
-      "keywords": [
-        "혁신기업",
-        "스타트업",
-        "창업",
-        "기업"
-      ],
-      "interview_insight": "'K-혁신기업 통합관 싱가포르 스위치 ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "[IT동아 한만혁 기자] 중소벤처기업부와 창업진흥원이 창업 지원기관 10곳과 손을 잡고 ‘싱가포르 기술·혁신 주간(SWITCH, Singapore Week of Innovation and Technology, 이하 스위치)’에 참가, K-혁신기업 통합관을 만들었다. 이곳에 참여한 우리나라 유망 스타트업 26곳은 투자 상담, 피칭 상위 등극 등 풍성한 성과를 냈다. 창업 지원기관들이 힘을 모아 만든 해외 진출 통합 지원 플랫폼을 타고 K-스타트업이 성과를 낸 사례로 주목받는다. 스위치 2026 K-혁신기업 통합관 현장 / 출처=창업진"
     },
     {
       "title": "AWS Lambda now supports GPU instances for Event Functions on Lambda Managed Instances",
@@ -4416,6 +4416,40 @@
       "raw_snippet": "In Kubernetes v1.36, Declarative Validation for Kubernetes native types has reached General Availability (GA). For users, this means more reliable, predictable, and better-documented APIs. By moving to a declarative model, the project also unlocks the future ability to publish validation rules via O"
     },
     {
+      "title": "OpenRouter Drops 3 Providers After Researchers Catch Months of Prompt Theft at AI Hosting Firms",
+      "link": "https://thehackernews.com/2026/11/openrouter-drops-3-providers-after.html",
+      "source": "The Hacker News",
+      "published": "Sun, 22 Nov 2026 10:36:55 +0530",
+      "category": "AI/머신러닝",
+      "summary": "Attackers stole data from inside three AI inference providers for months, and none of the three knew until researchers told them, the industrial cybersecurity company Dragos said this week. Some of th...",
+      "keywords": [
+        "of",
+        "the",
+        "AI",
+        "OpenRouter"
+      ],
+      "interview_insight": "'OpenRouter Drops 3 P...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "Attackers stole data from inside three AI inference providers for months, and none of the three knew until researchers told them, the industrial cybersecurity company Dragos said this week. Some of the stolen requests were flagged as Zero Data Retention, the setting that is supposed to mean a prompt"
+    },
+    {
+      "title": "Researchers Demonstrate Ghostscript Sandbox-Escape RCE via Crafted File Uploads in Popular Apps",
+      "link": "https://thehackernews.com/2026/11/researchers-demonstrate-ghostscript.html",
+      "source": "The Hacker News",
+      "published": "Sun, 22 Nov 2026 10:33:41 +0530",
+      "category": "보안/침해사고",
+      "summary": "A now-patched flaw in Ghostscript allows a crafted file to escape the program's security sandbox and run commands on the server that processes it. Ghostscript is the interpreter that many Linux server...",
+      "keywords": [
+        "the",
+        "Ghostscript",
+        "in",
+        "to"
+      ],
+      "interview_insight": "'Researchers Demonstr...' 보안 전략에서는 침입 탐지(IDS/IPS) 로그의 실시간 SIEM 상관분석과 사고 발생 시 침해 호스트의 네트워크 자동 격리(SOAR)가 핵심입니다.",
+      "target_role": "보안 관제 / 엔지니어",
+      "raw_snippet": "A now-patched flaw in Ghostscript allows a crafted file to escape the program's security sandbox and run commands on the server that processes it. Ghostscript is the interpreter that many Linux servers use to convert uploaded PDFs, PostScript files, and images into other formats, often without the a"
+    },
+    {
       "title": "A Single Malicious Webpage Let Researchers Hijack Meta Muse and Access Private Chats",
       "link": "https://thehackernews.com/2026/11/a-single-malicious-webpage-let.html",
       "source": "The Hacker News",
@@ -5215,38 +5249,21 @@
       "raw_snippet": "Google on Monday revealed that adversarial use of artificial intelligence (AI) by threat actors has gone beyond manual prompting to deploying autonomous multi-agent offensive frameworks like ARTEX, CAIRN, CyberStrikeAI, and PentAGI to execute multi-stage intrusions at greater operational velocity. I"
     },
     {
-      "title": "⚡ Weekly Recap: N-able 0-Days, Windows 0-Days, Chrome 0-Days, Fridge 0-Days, and More Bad Days",
-      "link": "https://thehackernews.com/2026/11/weekly-recap-n-able-0-days-windows-0.html",
-      "source": "The Hacker News",
-      "published": "Mon, 16 Nov 2026 18:57:20 +0530",
-      "category": "클라우드 아키텍처",
-      "summary": "A default password opened doors it never should have. A trusted update delivered malware. Even a security feature became a way to break in. Different stories, same problem: the things meant to protect...",
+      "title": "TechCrunch Mobility: A/B testing robots vs. humans",
+      "link": "https://techcrunch.com/2026/11/22/techcrunch-mobility-a-b-testing-robots-vs-humans/",
+      "source": "TechCrunch",
+      "published": "Sun, 22 Nov 2026 17:06:00 +0000",
+      "category": "AI/머신러닝",
+      "summary": "Welcome back to TechCrunch Mobility, your hub for the future of transportation and, now more than ever, the role AI is playing in it.",
       "keywords": [
-        "Days",
-        "and",
-        "to",
-        "in"
-      ],
-      "interview_insight": "'⚡ Weekly Recap: N-ab...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
-      "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "A default password opened doors it never should have. A trusted update delivered malware. Even a security feature became a way to break in. Different stories, same problem: the things meant to protect us aren't always doing their job. Meanwhile, AI is making bug hunting faster, old flaws are still p"
-    },
-    {
-      "title": "Six Unpatched Danfoss Refrigeration Controller Flaws Could Allow Remote Takeover Without Login",
-      "link": "https://thehackernews.com/2026/11/six-unpatched-danfoss-refrigeration.html",
-      "source": "The Hacker News",
-      "published": "Mon, 16 Nov 2026 18:04:21 +0530",
-      "category": "클라우드 아키텍처",
-      "summary": "Six flaws in Danfoss AK-SM800A refrigeration controllers could let a remote attacker take over a controller without logging in, Dutch security consultancy Midnight Blue said earlier this week. No patc...",
-      "keywords": [
-        "in",
+        "TechCrunch",
+        "Mobility",
         "the",
-        "Six",
-        "Danfoss"
+        "testing"
       ],
-      "interview_insight": "'Six Unpatched Danfos...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
-      "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "Six flaws in Danfoss AK-SM800A refrigeration controllers could let a remote attacker take over a controller without logging in, Dutch security consultancy Midnight Blue said earlier this week. No patch is available, and the researchers say the newest firmware, version 5.4.0, does not fix the flaws. "
+      "interview_insight": "'TechCrunch Mobility:...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "Welcome back to TechCrunch Mobility, your hub for the future of transportation and, now more than ever, the role AI is playing in it."
     },
     {
       "title": "Signal restricts mobile screenshots as it confronts ‘existential threat’ of AI surveillance",
@@ -5434,6 +5451,142 @@
       "interview_insight": "'California AG subpoe...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
       "target_role": "AI/ML 개발자 / 데이터 엔지니어",
       "raw_snippet": "\"The conduct of Nvidia and its former CEO raises bright red flags, including about the ways in which the company may have misled investors,\" California AG Rob Bonta said."
+    },
+    {
+      "title": "앤트로픽, 상장 첫날 97.17달러로 마감…공모가 대비 17% 상승",
+      "link": "https://www.etnews.com/20261120000001",
+      "source": "전자신문 (AI·SW)",
+      "published": "Fri, 20 Nov 2026 06:24:31 +0900",
+      "category": "AI/머신러닝",
+      "summary": "생성형 인공지능(AI) 모델 '클로드' 개발사 앤트로픽이 미국 나스닥 상장 첫날 공모가보다 약 17% 높은 가격에 거래를 마쳤다. 19일(현지시간) 나스닥 시장에 상장한 앤트로픽 주가는 이날 공모가 83달러 대비 17.07% 오른 97.17달러에 거래를 마감했다. 앞서 앤트로픽은 주당 111.5달러로 거래를 시작했다. 이는 전날 확정된 공모가 83달러와 비...",
+      "keywords": [
+        "공모가",
+        "17",
+        "거래를",
+        "앤트로픽"
+      ],
+      "interview_insight": "'앤트로픽, 상장 첫날 97.17달러로...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "생성형 인공지능(AI) 모델 '클로드' 개발사 앤트로픽이 미국 나스닥 상장 첫날 공모가보다 약 17% 높은 가격에 거래를 마쳤다. 19일(현지시간) 나스닥 시장에 상장한 앤트로픽 주가는 이날 공모가 83달러 대비 17.07% 오른 97.17달러에 거래를 마감했다. 앞서 앤트로픽은 주당 111.5달러로 거래를 시작했다. 이는 전날 확정된 공모가 83달러와 비교해 약 34.3% 오른 금액이다. 시초가 기준 완전희석 시가총액은 약 2조달러로 일론 머"
+    },
+    {
+      "title": "[KB유니콘클럽, 기술을 사업으로⑥]엑스파이, 숙련자 판단을 공장 자산으로…'엑스퍼트X' 개발",
+      "link": "https://www.etnews.com/20261119000066",
+      "source": "전자신문 (AI·SW)",
+      "published": "Fri, 20 Nov 2026 04:00:00 +0900",
+      "category": "AI/머신러닝",
+      "summary": "공장에서 설비 알람이 울리면 담당자는 매뉴얼을 찾고 선임자에게 과거 해결 방법을 묻는다. '엑스퍼트X'는 설비 데이터와 유사 고장 사례, 조치 결과를 함께 제시해 대응을 돕고, 새로운 조치 결과도 다음 문제 해결에 활용하도록 축적한다. 제조 인공지능(AI) 에이전트 기업 엑스파이(대표 이병석)는 숙련자의 판단과 해결 경험을 공장의 지식 자산으로 남기는 엑스...",
+      "keywords": [
+        "엑스퍼트X",
+        "기술을",
+        "엑스파이",
+        "자산으로"
+      ],
+      "interview_insight": "'[KB유니콘클럽, 기술을 사업으로⑥]...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "공장에서 설비 알람이 울리면 담당자는 매뉴얼을 찾고 선임자에게 과거 해결 방법을 묻는다. '엑스퍼트X'는 설비 데이터와 유사 고장 사례, 조치 결과를 함께 제시해 대응을 돕고, 새로운 조치 결과도 다음 문제 해결에 활용하도록 축적한다. 제조 인공지능(AI) 에이전트 기업 엑스파이(대표 이병석)는 숙련자의 판단과 해결 경험을 공장의 지식 자산으로 남기는 엑스퍼트X(ExpertX)를 개발하고 있다. LS엠트론과 HD현대삼호, CMTX 등에서 기술을"
+    },
+    {
+      "title": "中서 한한령 빗장 푼 李…3박 4일 ASEAN·APEC 마무리",
+      "link": "https://www.etnews.com/20261119000313",
+      "source": "전자신문 (정책·사회)",
+      "published": "Thu, 19 Nov 2026 22:00:00 +0900",
+      "category": "AI/머신러닝",
+      "summary": "이재명 대통령이 3박 4일간의 동남아시아국가연합(ASEAN·아세안)·아시아태평양경제협력체(APEC) 순방을 마쳤다. 이 대통령은 역내 국가들에 AI(인공지능) 대전환을 통한 공동 번영과 공급망 회복을 제안하고 미·중·러 정상에게 한반도 문제에 대한 우리 정부의 입장도 전달했다. 특히 한중 정상회담을 통해 사실상 한류 제한령(한한령·限韓令) 해제를 이끌어낸 ...",
+      "keywords": [
+        "3박",
+        "한한령",
+        "4일",
+        "ASEAN"
+      ],
+      "interview_insight": "'中서 한한령 빗장 푼 李…3박 4일 ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "이재명 대통령이 3박 4일간의 동남아시아국가연합(ASEAN·아세안)·아시아태평양경제협력체(APEC) 순방을 마쳤다. 이 대통령은 역내 국가들에 AI(인공지능) 대전환을 통한 공동 번영과 공급망 회복을 제안하고 미·중·러 정상에게 한반도 문제에 대한 우리 정부의 입장도 전달했다. 특히 한중 정상회담을 통해 사실상 한류 제한령(한한령·限韓令) 해제를 이끌어낸 것도 주요 성과로 꼽힌다. 이재명 대통령은 19일 3박 4일 동안의 동남아시아국가연합(AS"
+    },
+    {
+      "title": "美 캘리포니아, 엔비디아 조사 착수… 첨단칩 中 유출 수사",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001540",
+      "source": "IT조선",
+      "published": "2026-11-20 16:29:42",
+      "category": "AI/머신러닝",
+      "summary": "미국 캘리포니아주가 엔비디아의 첨단 인공지능(AI) 반도체와 기밀정보의 중국 유출 의혹을 조사한다. 관련 위험을 투자자에게 제대로 알렸는지가 핵심이다. 젠슨 황 전 최고경영자(CEO)를 둘러싼 논란이 증권법 위반 여부를 따지는 조사로 번졌다.19일(현지시각) AFP통신과 블룸버그통신 등에 따르면 롭 본타 캘리포니아주 법무장관은 엔비디아가 중국의 첨단 반도체...",
+      "keywords": [
+        "엔비디아",
+        "조사",
+        "유출",
+        "첨단"
+      ],
+      "interview_insight": "'美 캘리포니아, 엔비디아 조사 착수…...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "미국 캘리포니아주가 엔비디아의 첨단 인공지능(AI) 반도체와 기밀정보의 중국 유출 의혹을 조사한다. 관련 위험을 투자자에게 제대로 알렸는지가 핵심이다. 젠슨 황 전 최고경영자(CEO)를 둘러싼 논란이 증권법 위반 여부를 따지는 조사로 번졌다.19일(현지시각) AFP통신과 블룸버그통신 등에 따르면 롭 본타 캘리포니아주 법무장관은 엔비디아가 중국의 첨단 반도체 확보와 관련된 위험을 투자자와 대중에게 오도했는지 조사하고 있다고 밝혔다. 주 법무부는 엔비디아에 조사 소환장을 발부하고 관련 자료 제출을 요구했다.본타 장관은 성명에서 엔비디아"
+    },
+    {
+      "title": "[마감] 1월로 돌아간 코스피… 5% 급락 4800선 마감",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001538",
+      "source": "IT조선",
+      "published": "2026-11-20 16:06:00",
+      "category": "클라우드 아키텍처",
+      "summary": "코스피가 5% 넘게 급락하며 4800선에서 장을 마쳤다. 외국인의 대규모 순매도 속 삼성전자와 SK하이닉스가 큰 폭으로 하락했다. 중국 클라우드 업체의 기업용 솔리드스테이트드라이브(SSD) 발주 축소로 낸드 가격 하락 시점이 앞당겨질 것이라는 전망이 나오면서 국내 메모리 반도체 업체의 실적 우려가 투자심리를 떨어트렸다.20일 한국거래소에 따르면 코스피는 전...",
+      "keywords": [
+        "마감",
+        "업체의",
+        "코스피는",
+        "내린"
+      ],
+      "interview_insight": "'[마감] 1월로 돌아간 코스피… 5%...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "코스피가 5% 넘게 급락하며 4800선에서 장을 마쳤다. 외국인의 대규모 순매도 속 삼성전자와 SK하이닉스가 큰 폭으로 하락했다. 중국 클라우드 업체의 기업용 솔리드스테이트드라이브(SSD) 발주 축소로 낸드 가격 하락 시점이 앞당겨질 것이라는 전망이 나오면서 국내 메모리 반도체 업체의 실적 우려가 투자심리를 떨어트렸다.20일 한국거래소에 따르면 코스피는 전 거래일보다 5.21% 내린 4869.96에 마감했다. 종가 기준 1월 16일(4840.74) 이후 가장 낮다. 코스피는 4.08% 내린 4928.51에 출발한 뒤 장중 낙폭을 키"
+    },
+    {
+      "title": "[위클리AI] 오픈AI·앤트로픽·아마존, 이미지부터 쇼핑까지 신규 서비스 쏟아졌다",
+      "link": "https://it.donga.com/109882/",
+      "source": "IT동아",
+      "published": "Tue, 10 Nov 2026 16:30:14 +0900",
+      "category": "클라우드 아키텍처",
+      "summary": "[IT동아 박귀임 기자] 인공지능(AI)이 세상을 바꾸고 있습니다. AI는 이제 우리 일상에서 떼려야 뗄 수 없는 핵심적인 요소입니다. 한 주간 세계를 들썩이게 만든 글로벌 빅테크 기업부터 우리 일상에 직접 영향을 미칠 새로운 AI 소식까지 핵심만 짚어드립니다. 오픈AI, 이미지 2.6 출시···움직이는 이미지까지 만들어 오픈AI가 이미지 2.6을 출시했습...",
+      "keywords": [
+        "클로드",
+        "있습니다",
+        "페이블",
+        "이미지"
+      ],
+      "interview_insight": "'[위클리AI] 오픈AI·앤트로픽·아마...'와 같은 인프라 운영에서는 리소스 태깅 자동화와 Spot/Graviton 인스턴스 전환을 통한 FinOps 비용 절감 및 유휴 자원 회수가 핵심 경쟁력입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "[IT동아 박귀임 기자] 인공지능(AI)이 세상을 바꾸고 있습니다. AI는 이제 우리 일상에서 떼려야 뗄 수 없는 핵심적인 요소입니다. 한 주간 세계를 들썩이게 만든 글로벌 빅테크 기업부터 우리 일상에 직접 영향을 미칠 새로운 AI 소식까지 핵심만 짚어드립니다. 오픈AI, 이미지 2.6 출시···움직이는 이미지까지 만들어 오픈AI가 이미지 2.6을 출시했습니다 / 출처=오픈AI 글로벌 AI 기업 오픈AI(OpenAI)가 11월 4일(이하 현지 시간) 이미지 생성 모델 '이미지 2.6(Images 2.6)'을 자사 AI 서비스 챗GP"
+    },
+    {
+      "title": "⚡ Weekly Recap: N-able 0-Days, Windows 0-Days, Chrome 0-Days, Fridge 0-Days, and More Bad Days",
+      "link": "https://thehackernews.com/2026/11/weekly-recap-n-able-0-days-windows-0.html",
+      "source": "The Hacker News",
+      "published": "Mon, 16 Nov 2026 18:57:20 +0530",
+      "category": "클라우드 아키텍처",
+      "summary": "A default password opened doors it never should have. A trusted update delivered malware. Even a security feature became a way to break in. Different stories, same problem: the things meant to protect...",
+      "keywords": [
+        "Days",
+        "and",
+        "to",
+        "in"
+      ],
+      "interview_insight": "'⚡ Weekly Recap: N-ab...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "A default password opened doors it never should have. A trusted update delivered malware. Even a security feature became a way to break in. Different stories, same problem: the things meant to protect us aren't always doing their job. Meanwhile, AI is making bug hunting faster, old flaws are still p"
+    },
+    {
+      "title": "Six Unpatched Danfoss Refrigeration Controller Flaws Could Allow Remote Takeover Without Login",
+      "link": "https://thehackernews.com/2026/11/six-unpatched-danfoss-refrigeration.html",
+      "source": "The Hacker News",
+      "published": "Mon, 16 Nov 2026 18:04:21 +0530",
+      "category": "클라우드 아키텍처",
+      "summary": "Six flaws in Danfoss AK-SM800A refrigeration controllers could let a remote attacker take over a controller without logging in, Dutch security consultancy Midnight Blue said earlier this week. No patc...",
+      "keywords": [
+        "in",
+        "the",
+        "Six",
+        "Danfoss"
+      ],
+      "interview_insight": "'Six Unpatched Danfos...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "Six flaws in Danfoss AK-SM800A refrigeration controllers could let a remote attacker take over a controller without logging in, Dutch security consultancy Midnight Blue said earlier this week. No patch is available, and the researchers say the newest firmware, version 5.4.0, does not fix the flaws. "
     },
     {
       "title": "Apple may be developing its own AI agent that runs your Mac",
