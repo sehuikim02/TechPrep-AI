@@ -1057,11 +1057,27 @@ async def admin_generate_daily_report(
         "주어진 로그 팩트와 수치에 기반하여 신뢰도 높은 운영 리포트를 마크다운으로 출력하십시오."
     )
 
-    # Gemini 호출
-    reply_text, used_model, p_tok, c_tok, t_tok = call_gemini_api(
-        full_prompt=prompt_content,
-        system_prompt=system_instruction
-    )
+    # CrewAI 멀티 에이전트 파이프라인 연동 우선 시도
+    reply_text = None
+    used_model = None
+    p_tok, c_tok, t_tok = 0, 0, 0
+    try:
+        from backend.crew_pipeline import run_devops_audit_pipeline
+        crew_data = dict(date_data)
+        crew_data["total_articles"] = total_articles_count
+        crew_res = run_devops_audit_pipeline(target_date, raw_data=crew_data)
+        if crew_res and crew_res.get("report_content"):
+            reply_text = crew_res["report_content"]
+            used_model = crew_res.get("model") or ("CrewAI Multi-Agent" if crew_res.get("mode") == "crewai_multi_agent" else "Rule-based Diagnostic Fallback")
+    except Exception as crew_err:
+        print(f"⚠️ [Main] CrewAI 파이프라인 연동 예외 ({crew_err}). 단일 Gemini LLM 직접 호출로 전환합니다.")
+
+    # CrewAI에서 내용이 도출되지 않았을 경우 기존 단일 LLM 호출 폴백
+    if not reply_text:
+        reply_text, used_model, p_tok, c_tok, t_tok = call_gemini_api(
+            full_prompt=prompt_content,
+            system_prompt=system_instruction
+        )
 
     # 폴백 리포트 (API 키 미설정 또는 호출 실패 시 안전 처리)
     if not reply_text:

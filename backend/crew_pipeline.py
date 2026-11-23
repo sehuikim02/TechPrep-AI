@@ -2,15 +2,15 @@
 CrewAI Multi-Agent Pipeline for TechPrep-AI
 ============================================
 이 모듈은 TechPrep-AI의 시스템 감사 로그, 보안 이슈, 클라이언트 에러를
-역할 분담형 멀티 에이전트(CrewAI) 팀이 단계별로 협업 분석하고 종합 리포트를 도출하는 파이프라인입니다.
+역할 분담형 멀티 에이전트(CrewAI) 팀이 3단계로 협업 분석하고 종합 리포트를 도출하는 파이프라인입니다.
 
-[역할 분담 구조]
-1. Data & Security Analyst (Agent):
-   - 원시 활동 로그, 로그인 시도, 차단/에러 이벤트를 정밀 분석하여 보안 위협 및 이상 징후 파악
-2. DevOps Reliability Engineer (Agent):
-   - 프론트엔드 에러 스택, 기사 자동 정리 파이프라인 상태, 토큰 사용량 및 인프라 안정성 검증
-3. Chief DevOps Officer / Report Synthesizer (Agent):
-   - 분석 결과들을 종합하여 실무 관리자를 위한 명확하고 실행 가능한 마크다운 최종 브리핑 생성
+[역할 분담 3단계 구조]
+1. Metrics Aggregator & Verifier (Agent 1: 지표 집계·검산 에이전트):
+   - 로그인 시도/실패, 분석 로그, 토큰, 에러/차단 건수를 집계·검산하여 상단 요약 수치와 본문 수치 간 불일치가 없도록 기준 데이터를 정리
+2. Security & DevOps Operations Analyst (Agent 2: 보안·운영 분석 에이전트):
+   - 인증/차단 이슈, 에러 스택, 토큰 소비, 기사 정리 흐름에서 핵심 인사이트와 주의 사항을 도출
+3. Executive Report Writer & Synthesizer (Agent 3: 리포트 작성 에이전트):
+   - 앞선 검증 및 분석 결과를 종합하여 관리자 관제탑 및 마크다운 다운로드에 최적화된 최종 비즈니스 마크다운 리포트 작성
 """
 
 import os
@@ -65,7 +65,7 @@ def get_crewai_llm(model_name: Optional[str] = None, timeout: int = 30):
 
 def build_devops_audit_crew(target_date: str, raw_data: Optional[Dict[str, Any]] = None):
     """
-    특정 날짜의 데이터에 대한 CrewAI 멀티 에이전트 파이프라인(크루)을 구성합니다.
+    '오늘의 AI 리포트' 전용 3단계 CrewAI 멀티 에이전트 파이프라인(크루)을 구성합니다.
     무한 루프나 대기를 차단하기 위해 max_iter, max_retry_limit, max_execution_time을 명시합니다.
     """
     try:
@@ -76,13 +76,17 @@ def build_devops_audit_crew(target_date: str, raw_data: Optional[Dict[str, Any]]
     data = raw_data or get_logs_for_date(target_date)
     llm = get_crewai_llm()
 
-    # 1. 보안 및 데이터 분석 에이전트
-    security_analyst = Agent(
-        role="Security & Authentication Log Analyst",
-        goal=f"Analyze authentication attempts and security anomalies for date {target_date}.",
+    # 1. 지표 집계·검산 에이전트
+    metrics_verifier = Agent(
+        role="Audit Metrics Aggregator & Verifier",
+        goal=(
+            f"Verify and reconcile all usage logs, authentication stats, token totals, "
+            f"and error counts for date {target_date} without mathematical discrepancy."
+        ),
         backstory=(
-            "You are a seasoned cyber security expert. You scrutinize every single login failure, "
-            "unauthorized/blocked request, and detect credential stuffing or brute force indicators."
+            "You are a rigorous data auditor and DevOps telemetry analyst. You cross-check "
+            "log counts, failed logins, client errors, and token consumption to guarantee "
+            "100% data consistency between header summaries and report details."
         ),
         verbose=False,
         allow_delegation=False,
@@ -92,13 +96,16 @@ def build_devops_audit_crew(target_date: str, raw_data: Optional[Dict[str, Any]]
         max_execution_time=25
     )
 
-    # 2. 인프라 및 신뢰성 엔지니어 에이전트
-    reliability_engineer = Agent(
-        role="Site Reliability & DevOps Quality Engineer",
-        goal=f"Examine client frontend telemetry errors, token usage efficiency, and cleanup pipeline health for {target_date}.",
+    # 2. 보안·운영 분석 에이전트
+    operations_analyst = Agent(
+        role="Security & DevOps Operations Analyst",
+        goal=(
+            f"Extract vital security insights, attack trends, reliability risks, and resource "
+            f"efficiencies from verified telemetry metrics for date {target_date}."
+        ),
         backstory=(
-            "You are a DevOps and SRE specialist focused on continuous service uptime, zero unhandled errors, "
-            "and efficient resource utilization (token consumption and background automation)."
+            "You are a veteran cybersecurity and SRE expert. You analyze anomalous authentication "
+            "bursts, forbidden requests, frontend client errors, and 30-day article retention cleanup events."
         ),
         verbose=False,
         allow_delegation=False,
@@ -108,13 +115,17 @@ def build_devops_audit_crew(target_date: str, raw_data: Optional[Dict[str, Any]]
         max_execution_time=25
     )
 
-    # 3. 최고 운영 책임자 (리포트 종합 에이전트)
-    executive_synthesizer = Agent(
-        role="Chief DevOps Officer & Executive Synthesizer",
-        goal=f"Synthesize security findings and reliability metrics into an actionable, executive Markdown audit report for {target_date}.",
+    # 3. 리포트 작성 에이전트
+    report_writer = Agent(
+        role="Executive Report Writer & Synthesizer",
+        goal=(
+            f"Synthesize the verified metrics and operational insights into a structured, "
+            f"professional Korean Markdown Daily AI Audit Report for date {target_date}."
+        ),
         backstory=(
-            "You translate technical anomalies into prioritized executive action items and summary scorecards. "
-            "You produce elegant, structured Korean Markdown reports for top-tier management."
+            "You are the Chief AI Auditor for TechPrep-AI. You produce elegant, management-ready "
+            "Korean Markdown reports complete with Executive Summary, Security Analysis, "
+            "System Stability & Telemetry, and Prioritized Action Items."
         ),
         verbose=False,
         allow_delegation=False,
@@ -133,6 +144,7 @@ def build_devops_audit_crew(target_date: str, raw_data: Optional[Dict[str, Any]]
 - Frontend Telemetry Client Errors: {data.get('frontend_error_count', 0)}
 - 30-Day Cleanup Maintenance Runs: {data.get('cleanup_event_count', 0)}
 - Blocked / Forbidden Violations: {data.get('blocked_event_count', 0)}
+- Total Active Articles in DB/Data: {data.get('total_articles', 0)}
 
 Recent Login Log Samples:
 {data.get('sample_login_logs', [])[:10]}
@@ -141,32 +153,47 @@ Recent Usage / Error Log Samples:
 {data.get('sample_usage_logs', [])[:15]}
 """
 
-    # 태스크 정의
-    task_security = Task(
-        description=f"Analyze the following security data and assess threat levels:\n{data_context}\n"
-                    "Detail the login failure rate, repeated bad logins, and blocked attacks.",
-        expected_output="A concise bullet-point security assessment with severity levels.",
-        agent=security_analyst
+    # 태스크 1: 지표 검산 및 정합성 기준표 작성
+    task_verify_metrics = Task(
+        description=(
+            f"Cross-verify the following system logs and operational data for date {target_date}:\n{data_context}\n"
+            "Produce a consolidated metric validation table ensuring no discrepancy between "
+            "total logins vs failed/successful logins, error totals, and AI token counts."
+        ),
+        expected_output="A structured bullet-point validation baseline of verified metrics and counts.",
+        agent=metrics_verifier
     )
 
-    task_reliability = Task(
-        description=f"Review the frontend errors, token efficiency, and maintenance event logs:\n{data_context}\n"
-                    "Assess whether system stability is compromised.",
-        expected_output="A concise reliability and error diagnostic summary.",
-        agent=reliability_engineer
+    # 태스크 2: 보안 및 운영 위험/인사이트 분석
+    task_analyze_operations = Task(
+        description=(
+            f"Based on the verified metrics and raw data for {target_date}, perform an in-depth security "
+            "and operational diagnostic. Identify abnormal login patterns, credential stuffing signals, "
+            "client-side frontend telemetry errors, token usage spikes, and cleanup maintenance status."
+        ),
+        expected_output="A thorough operational and security assessment with identified risk items.",
+        agent=operations_analyst
     )
 
-    task_synthesis = Task(
-        description="Using the findings from the Security Analyst and Reliability Engineer, "
-                    f"produce a comprehensive Korean Markdown audit report for date {target_date}. "
-                    "The report must include: 1. Executive Summary, 2. Security Assessment, 3. Stability & Telemetry, 4. Action Items.",
-        expected_output="A complete, professional Korean Markdown audit report ready for management review.",
-        agent=executive_synthesizer
+    # 태스크 3: 관리자용 최종 한국어 마크다운 리포트 작성
+    task_write_report = Task(
+        description=(
+            f"Using the verified metric baseline and operational findings, draft the definitive "
+            f"'오늘의 AI 리포트' (Daily AI Audit Report) for {target_date} in professional Korean Markdown.\n"
+            "The report MUST follow this exact section structure:\n"
+            "### 1. 오늘의 종합 운영 요약 (Executive Summary)\n"
+            "### 2. 보안 및 인증/차단 이슈 분석 (Security Assessment)\n"
+            "### 3. 시스템 안정성 및 에러/정리 진단 (Stability & Telemetry)\n"
+            "### 4. 관리자 권장 조치 사항 (Action Items)\n"
+            "Ensure the figures in the report body strictly match the verified metrics."
+        ),
+        expected_output="A complete, professional Korean Markdown audit report formatted cleanly for dashboard and download.",
+        agent=report_writer
     )
 
     crew = Crew(
-        agents=[security_analyst, reliability_engineer, executive_synthesizer],
-        tasks=[task_security, task_reliability, task_synthesis],
+        agents=[metrics_verifier, operations_analyst, report_writer],
+        tasks=[task_verify_metrics, task_analyze_operations, task_write_report],
         process=Process.sequential,
         verbose=False
     )
@@ -174,30 +201,36 @@ Recent Usage / Error Log Samples:
     return crew
 
 def generate_rule_engine_report(target_date: str, data: Dict[str, Any], note: str = "") -> str:
-    """규칙 기반 엔진 리포트 생성기"""
+    """규칙 기반 엔진 리포트 생성기 (안전 Fallback)"""
     note_line = f"\n> ℹ️ *{note}*\n" if note else ""
-    return f"""# 🤖 TechPrep-AI DevOps CrewAI 감사 리포트 ({target_date})
+    total_articles = data.get("total_articles", 0)
+    articles_line = f"- 등록 활성 기사: 총 **{total_articles}건** 유지 중\n" if total_articles else ""
+    return f"""### 📊 TechPrep-AI 운영 진단 리포트 ({target_date})
 {note_line}
-### 1. 보안 분석가 진단 (Security Analyst)
-- 총 로그인 시도: **{data.get('total_login_logs', 0)}건** (실패: **{data.get('login_failed_count', 0)}건**)
-- 인가되지 않은 접근 차단: **{data.get('blocked_event_count', 0)}건** 탐지
+#### 1. 오늘의 종합 운영 요약 (Executive Summary)
+- **일자**: `{target_date}`
+- **전체 API 활동 로그**: 총 **{data.get('total_usage_logs', 0)}건** 기록됨
+- **챗봇 AI 호출 및 토큰**: **{data.get('chat_calls', 0)}건** 호출, 누적 **{data.get('total_tokens', 0):,} 토큰** 사용
+{articles_line}
+#### 2. 보안 및 인증 이슈 분석
+- **로그인 시도**: 총 {data.get('total_login_logs', 0)}건 (성공: {data.get('total_login_logs', 0) - data.get('login_failed_count', 0)}건 / 실패: {data.get('login_failed_count', 0)}건)
+- **차단 및 미승인 접근**: 총 **{data.get('blocked_event_count', 0)}건** 탐지 및 방어 완료
 
-### 2. 신뢰성 엔지니어 진단 (Reliability Engineer)
-- 프론트엔드 텔레메트리 에러: **{data.get('frontend_error_count', 0)}건**
-- 챗봇 AI 토큰 소비: **{data.get('total_tokens', 0):,} 토큰** ({data.get('chat_calls', 0)}회 호출)
-- 30일 경과 기사 자동 정리: **{data.get('cleanup_event_count', 0)}건** 수행
+#### 3. 시스템 안정성 및 정리 상태
+- **프론트엔드 클라이언트 에러**: 총 **{data.get('frontend_error_count', 0)}건** 수집됨
+- **기사 자동 정리 이벤트**: 총 **{data.get('cleanup_event_count', 0)}건** 수행됨
 
-### 3. 최고 운영 책임자 권장 조치 (Executive Action Items)
-1. 로그인 실패율이 감지되면 차단된 IP 목록 및 사용자 상태를 관제탑에서 점검하십시오.
-2. 클라이언트 에러 수집 로그(`FRONTEND_ERROR`)를 모니터링하여 프론트엔드 번들 안정성을 유지하십시오.
+#### 4. 관리자 권장 조치 사항
+1. 대기(pending) 상태인 신규 가입자가 있는 경우 관제탑 회원 관리 테이블에서 일괄 승인을 진행하십시오.
+2. 클라이언트 에러가 감지되었을 경우 실시간 감사 로그(FRONTEND_ERROR)의 스택 트레이스를 확인하십시오.
 """
 
-def run_devops_audit_pipeline(target_date: str) -> Dict[str, Any]:
+def run_devops_audit_pipeline(target_date: str, raw_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    CrewAI 파이프라인을 실행하여 결과를 반환합니다.
-    API 키가 없거나 외부 통신/쿼터 제한 등 예외 발생 시 신속하고 비파괴적인 fallback 리포트를 반환합니다.
+    CrewAI 파이프라인을 실행하여 '오늘의 AI 리포트' 결과를 반환합니다.
+    API 키가 없거나 외부 통신/쿼터 제한(429) 등 예외 발생 시 신속하고 비파괴적인 fallback 리포트를 반환합니다.
     """
-    data = get_logs_for_date(target_date)
+    data = raw_data or get_logs_for_date(target_date)
     llm = get_crewai_llm()
 
     if not llm:
@@ -207,6 +240,7 @@ def run_devops_audit_pipeline(target_date: str) -> Dict[str, Any]:
         return {
             "status": "success",
             "mode": "fallback_rule_engine",
+            "model": "Rule-based Diagnostic Fallback",
             "target_date": target_date,
             "metrics": data,
             "report_content": fallback_content
@@ -219,6 +253,7 @@ def run_devops_audit_pipeline(target_date: str) -> Dict[str, Any]:
         return {
             "status": "success",
             "mode": "crewai_multi_agent",
+            "model": "CrewAI (Gemini Multi-Agent)",
             "target_date": target_date,
             "metrics": data,
             "report_content": output_text
@@ -231,6 +266,7 @@ def run_devops_audit_pipeline(target_date: str) -> Dict[str, Any]:
         return {
             "status": "warning",
             "mode": "fallback_on_error",
+            "model": "CrewAI Fallback Diagnostic",
             "error_detail": str(e),
             "target_date": target_date,
             "metrics": data,
@@ -243,5 +279,5 @@ if __name__ == "__main__":
     arg_date = sys.argv[1] if len(sys.argv) > 1 else today_str
     print(f"🚀 Running TechPrep-AI CrewAI Audit Pipeline for: {arg_date}...")
     res = run_devops_audit_pipeline(arg_date)
-    print("\n--- [Pipeline Result Mode: {}] ---".format(res.get("mode")))
+    print("\n--- [Pipeline Result Mode: {} | Model: {}] ---".format(res.get("mode"), res.get("model")))
     print(res["report_content"][:500] + ("..." if len(res["report_content"]) > 500 else ""))

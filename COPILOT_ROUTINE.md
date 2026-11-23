@@ -34,9 +34,14 @@
    - 🚨 **프론트엔드 에러 수집 텔레메트리**: 브라우저 JS 런타임 에러(`window.onerror`, unhandled rejection) 발생 시 `/api/audit/client-error`로 자동 전송되어 `usage_logs`에 누적되는 파이프라인 유지.
 3. **프론트엔드 정적 파일 동기화 규칙**:
    - `frontend/index.html`을 수정한 경우, 배포 루트의 `index.html`에도 동일하게 반영(`cp frontend/index.html index.html`)합니다.
-4. **CrewAI 멀티 에이전트 파이프라인 무한 대기(Hang) 방지 원칙**:
+4. **CrewAI 멀티 에이전트 파이프라인 및 '오늘의 AI 리포트' 연동 원칙**:
    - `crew_pipeline.py` 등 CrewAI 모듈 구동 시 원격 OTLP 전송 및 대화형 프롬프트 대기로 인한 블로킹을 원천 차단하기 위해 `CREWAI_TRACING_ENABLED=false`, `CREWAI_DISABLE_TELEMETRY=true`, `OTEL_SDK_DISABLED=true`, `CREWAI_TESTING=true`를 필수로 적용합니다.
    - CrewAI `LLM` 설정 시 Google GenAI 클라이언트 옵션에 `retry_options=HttpRetryOptions(attempts=1)` 및 타임아웃을 명시하고, 각 Agent에 `max_iter`, `max_retry_limit`, `max_execution_time`을 엄격히 부여하여 할당량 소진(429)이나 네트워크 장애 시에도 수십 초 내에 안전한 Fallback 리포트로 즉시 전환되도록 합니다.
+   - **'오늘의 AI 리포트' 3단계 협업 에이전트 구조**:
+     1) **지표 집계·검산 에이전트 (Audit Metrics Aggregator & Verifier)**: 대상 일자의 API 로그, 로그인 시도/실패, 토큰, 에러/차단 건수를 교차 검산하여 상단 요약 배너와 본문 수치 간 불일치를 원천 차단
+     2) **보안·운영 분석 에이전트 (Security & DevOps Operations Analyst)**: 인증 실패 패턴, 비정상 차단, 프론트엔드 에러 스택, 30일 경과 기사 정리 현황에서 핵심 인사이트와 잠재 리스크 도출
+     3) **리포트 작성 에이전트 (Executive Report Writer & Synthesizer)**: 관리자 관제탑 및 마크다운 다운로드에 최적화된 비즈니스 마크다운 최종 브리핑 생성
+   - 백엔드 관리자 리포트 생성 API(`/api/admin/reports/generate`)는 CrewAI 파이프라인을 1순위로 가동하며, 도출된 결과와 요약 메타데이터를 DB(`daily_ai_reports`)에 안전하게 UPSERT 영구 반영합니다.
 5. **검증 수행 (속도 및 리소스 최적화)**:
    - **경량/국소 수정 (단순 UI, 텍스트 문구, 단일 함수 수정)**:
      - 전체 E2E 스위트를 매번 돌리지 않고, 수정한 모듈의 파이썬 단위 테스트나 해당 기능 전용 타겟 E2E 테스트(예: `pytest tests/e2e/test_auth_flow.py`)만 먼저 빠르게 실행하여 피드백 루프를 단축합니다.
