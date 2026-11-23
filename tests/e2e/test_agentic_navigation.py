@@ -1,3 +1,4 @@
+import re
 import pytest
 from playwright.sync_api import expect
 from tests.e2e.conftest import BASE_URL, ADMIN_USERNAME, ADMIN_PASSWORD
@@ -50,21 +51,31 @@ def test_agentic_navigation_to_article(page_with_telemetry):
     # Should re-trigger highlight on card
     expect(page.locator(".article-card-item.agentic-highlight")).to_be_visible()
 
-    # 6. Verify Quick Reply candidates and panel drag/dock features
+    # 6. Verify Quick Reply candidates and active class transition
     quick_reply_btns = page.locator(".quick-reply-btn")
     expect(quick_reply_btns.first).to_be_visible()
     count = quick_reply_btns.count()
     assert count >= 2, f"Expected at least 2 quick reply buttons, got {count}"
 
-    # Click second quick reply candidate to navigate
+    # Initially, the 1st button should have active-candidate class
+    expect(quick_reply_btns.nth(0)).to_have_class(re.compile(r"active-candidate"))
+
+    # Click second quick reply candidate to navigate and verify active state moves to 2nd
     quick_reply_btns.nth(1).click()
+    expect(quick_reply_btns.nth(1)).to_have_class(re.compile(r"active-candidate"))
+    expect(quick_reply_btns.nth(0)).not_to_have_class(re.compile(r"active-candidate"))
     expect(page.locator(".article-card-item.agentic-highlight")).to_be_visible()
+
+    # Click third quick reply candidate if present and verify active state moves to 3rd
+    if count >= 3:
+        quick_reply_btns.nth(2).click()
+        expect(quick_reply_btns.nth(2)).to_have_class(re.compile(r"active-candidate"))
+        expect(quick_reply_btns.nth(1)).not_to_have_class(re.compile(r"active-candidate"))
 
     # Test Chat panel docking toggle button
     dock_btn = page.locator("#btn-dock-chat")
     expect(dock_btn).to_be_visible()
     dock_btn.click()
-    import re
     expect(page.locator("#chat-panel")).to_have_class(re.compile(r"left-0"))
 
     # Test Chat panel collapse/expand button
