@@ -231,6 +231,22 @@ def init_db():
                 updated_at TEXT NOT NULL
             )
             """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                article_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                link TEXT,
+                category TEXT,
+                source TEXT,
+                summary TEXT,
+                interview_insight TEXT,
+                created_at TEXT NOT NULL,
+                CONSTRAINT uq_user_article UNIQUE (user_id, article_id)
+            )
+            """)
         else:
             print(f"📁 Connected to SQLite database at: {DB_PATH}")
             cursor.execute("""
@@ -289,6 +305,22 @@ def init_db():
                 target_role TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )
+            """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                article_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                link TEXT,
+                category TEXT,
+                source TEXT,
+                summary TEXT,
+                interview_insight TEXT,
+                created_at TEXT NOT NULL,
+                UNIQUE (user_id, article_id)
             )
             """)
 
@@ -499,6 +531,109 @@ def record_usage_log(username: Optional[str], ip: str, action: str, status: str,
 # 날짜 유틸리티 import (호환성을 위해 collector.date_utils에서 가져와 재노출)
 from collector.date_utils import parse_article_datetime
 
+# ==================== Bookmarks Management Engine ====================
+def toggle_user_bookmark(user_id: int, article_data: dict) -> dict:
+    """
+    기사 북마크를 토글(저장 ↔ 해제)합니다.
+    이미 존재하면 삭제(해제), 없으면 추가(저장)하여 중복 저장을 원천 차단합니다.
+    """
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    article_id = article_data.get("article_id") or ""
+    title = article_data.get("title") or "기사 제목 없음"
+    link = article_data.get("link") or ""
+    category = article_data.get("category") or "기타"
+    source = article_data.get("source") or ""
+    summary = article_data.get("summary") or ""
+    insight = article_data.get("interview_insight") or ""
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id FROM bookmarks WHERE user_id = {ph} AND article_id = {ph}",
+            (user_id, article_id)
+        )
+        row = cursor.fetchone()
+
+        if row:
+            # 이미 존재하므로 북마크 해제 (DELETE)
+            cursor.execute(
+                f"DELETE FROM bookmarks WHERE user_id = {ph} AND article_id = {ph}",
+                (user_id, article_id)
+            )
+            return {
+                "bookmarked": False,
+                "article_id": article_id,
+                "action": "removed",
+                "message": "북마크가 해제되었습니다."
+            }
+        else:
+            # 신규 북마크 추가 (INSERT)
+            cursor.execute(
+                f"""INSERT INTO bookmarks 
+                   (user_id, article_id, title, link, category, source, summary, interview_insight, created_at) 
+                   VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})""",
+                (user_id, article_id, title, link, category, source, summary, insight, now_iso)
+            )
+            return {
+                "bookmarked": True,
+                "article_id": article_id,
+                "action": "added",
+                "message": "북마크에 저장되었습니다."
+            }
+
+def get_user_bookmarks(user_id: int) -> List[dict]:
+    """특정 사용자가 저장한 북마크 목록을 최신순으로 반환합니다."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id, article_id, title, link, category, source, summary, interview_insight, created_at FROM bookmarks WHERE user_id = {ph} ORDER BY id DESC",
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        return [format_row_dict(r) for r in rows]
+
+def get_user_bookmarked_article_ids(user_id: int) -> List[str]:
+    """특정 사용자가 북마크한 기사 article_id 목록만 빠르게 조회합니다."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT article_id FROM bookmarks WHERE user_id = {ph}",
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        return [dict(r)["article_id"] for r in rows]
+
+def get_all_protected_bookmarked_keys() -> set:
+    """30일 경과 기사 자동 삭제 시 보호할 모든 북마크 기사의 ID 및 Link 집합을 반환합니다."""
+    use_pg = is_postgres()
+    protected = set()
+    try:
+        with get_db_cursor() as cursor:
+            # bookmarks 테이블 존재 확인
+            if use_pg:
+                cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'bookmarks'")
+            else:
+                cursor.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bookmarks'")
+            if not cursor.fetchone():
+                return protected
+
+            cursor.execute("SELECT article_id, link, title FROM bookmarks")
+            rows = cursor.fetchall()
+            for r in rows:
+                d = dict(r)
+                if d.get("article_id"):
+                    protected.add(d["article_id"])
+                if d.get("link"):
+                    protected.add(d["link"])
+                if d.get("title"):
+                    protected.add(d["title"])
+    except Exception as ex:
+        print(f"⚠️ get_all_protected_bookmarked_keys error: {ex}")
+    return protected
+
 def delete_old_articles_from_db(retention_days: int = 30) -> int:
     """PostgreSQL 및 SQLite DB의 articles 테이블에서 retention_days 초과 기사를 일괄 DELETE합니다."""
     use_pg = is_postgres()
@@ -519,16 +654,26 @@ def delete_old_articles_from_db(retention_days: int = 30) -> int:
             if not cursor.fetchone():
                 return 0
 
-            # 1. ISO 포맷 문자열 비교를 통한 1차 삭제
-            cursor.execute(f"DELETE FROM articles WHERE created_at < {ph} OR published < {ph}", (cutoff_iso, cutoff_iso))
-            deleted_count += cursor.rowcount
+            # 북마크로 보호 중인 기사 ID/키 목록 확인
+            protected_keys = get_all_protected_bookmarked_keys()
 
-            # 2. RFC 2822 등 다양한 포맷으로 저장된 기사 안전 처리 (SELECT 후 파싱 및 ID 목록 삭제)
-            cursor.execute("SELECT id, article_id, published, created_at FROM articles")
+            # 1. ISO 포맷 문자열 비교를 통한 1차 대상 추출 (북마크 보호 필터링)
+            cursor.execute("SELECT id, article_id, link, title, published, created_at FROM articles")
             rows = cursor.fetchall()
             ids_to_delete = []
             for r in rows:
                 row_dict = dict(r)
+                art_id = row_dict.get("article_id")
+                art_link = row_dict.get("link")
+                art_title = row_dict.get("title")
+                # 북마크 보호 기사는 제외
+                if (
+                    (art_id and art_id in protected_keys) or
+                    (art_link and art_link in protected_keys) or
+                    (art_title and art_title in protected_keys)
+                ):
+                    continue
+
                 p_str = row_dict.get("published") or row_dict.get("created_at")
                 if not p_str:
                     continue

@@ -33,6 +33,10 @@ from backend.database import (
     get_security_and_usage_stats,
     delete_old_articles_from_db,
     parse_article_datetime,
+    toggle_user_bookmark,
+    get_user_bookmarks,
+    get_user_bookmarked_article_ids,
+    get_all_protected_bookmarked_keys,
     DB_PATH
 )
 
@@ -276,6 +280,9 @@ def preview_article_cleanup(retention_days: int = 30) -> dict:
     cutoff_dt = now_utc - timedelta(days=retention_days)
     cutoff_iso = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    # 북마크 보호 키 집합 조회 (북마크된 기사는 자동 삭제 대상에서 제외)
+    protected_keys = get_all_protected_bookmarked_keys()
+
     target_files = [
         os.path.join(base_dir, "data", "jobs_and_trends.json"),
         os.path.join(base_dir, "frontend", "jobs_and_trends.json"),
@@ -297,6 +304,17 @@ def preview_article_cleanup(retention_days: int = 30) -> dict:
                     link = art.get("link") or art.get("title")
                     if link in seen_links:
                         continue
+                    # 북마크 보호 확인
+                    art_id = art.get("article_id")
+                    art_link = art.get("link")
+                    art_title = art.get("title")
+                    if (
+                        (art_id and art_id in protected_keys) or
+                        (art_link and art_link in protected_keys) or
+                        (art_title and art_title in protected_keys)
+                    ):
+                        continue
+
                     date_str = art.get("published") or art.get("created_at") or art.get("published_at")
                     dt = parse_article_datetime(date_str)
                     if dt is not None and dt < cutoff_dt:
@@ -329,6 +347,9 @@ def execute_article_cleanup(retention_days: int = 30, triggered_by: str = "SYSTE
     cutoff_dt = now_utc - timedelta(days=retention_days)
     cutoff_iso = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    # 북마크 보호 키 집합 조회 (북마크된 기사는 자동 삭제 대상에서 제외)
+    protected_keys = get_all_protected_bookmarked_keys()
+
     # 대상 JSON 파일 목록
     target_files = [
         os.path.join(base_dir, "data", "jobs_and_trends.json"),
@@ -360,15 +381,25 @@ def execute_article_cleanup(retention_days: int = 30, triggered_by: str = "SYSTE
             for art in articles:
                 date_str = art.get("published") or art.get("created_at") or art.get("published_at")
                 dt = parse_article_datetime(date_str)
-                # 날짜가 파싱되었고 30일(cutoff_dt) 이전인 경우 삭제 대상
-                if dt is not None and dt < cutoff_dt:
+                # 북마크 보호 확인: 사용자가 북마크한 기사는 30일이 경과해도 삭제 대상에서 제외
+                art_id = art.get("article_id")
+                art_link = art.get("link")
+                art_title = art.get("title")
+                is_protected = (
+                    (art_id and art_id in protected_keys) or
+                    (art_link and art_link in protected_keys) or
+                    (art_title and art_title in protected_keys)
+                )
+
+                # 날짜가 파싱되었고 30일(cutoff_dt) 이전이며, 북마크로 보호되지 않은 경우 삭제 대상
+                if dt is not None and dt < cutoff_dt and not is_protected:
                     file_deleted += 1
                     t = art.get("title", "").strip()
                     if t and t not in seen_deleted_titles:
                         seen_deleted_titles.add(t)
                         deleted_titles_sample.append(t)
                 else:
-                    # 날짜가 없거나 기준일 이내인 경우 안전하게 보존
+                    # 날짜가 없거나 기준일 이내이거나 북마크 보호 기사인 경우 안전하게 보존
                     kept_articles.append(art)
 
             if file_deleted > 0 or initial_count != len(kept_articles):
@@ -751,6 +782,58 @@ async def get_me(authorization: Optional[str] = Header(None)):
             "role": user["role"],
             "api_status": user["api_status"]
         }
+    }
+
+# --- User Bookmarks Endpoints ---
+class BookmarkToggleRequest(BaseModel):
+    article_id: str
+    title: Optional[str] = "기사 제목 없음"
+    link: Optional[str] = ""
+    category: Optional[str] = "기타"
+    source: Optional[str] = ""
+    summary: Optional[str] = ""
+    interview_insight: Optional[str] = ""
+
+@app.post("/api/bookmarks/toggle")
+async def api_toggle_bookmark(
+    req: BookmarkToggleRequest,
+    current_user: dict = Depends(get_current_user_required),
+    request: Request = None
+):
+    """현재 로그인한 사용자의 기사 북마크 상태를 토글(저장/해제)합니다."""
+    res = toggle_user_bookmark(current_user["id"], req.dict())
+    client_ip = get_client_ip(request) if request else "unknown"
+    action_type = "BOOKMARK_ADD" if res["bookmarked"] else "BOOKMARK_REMOVE"
+    record_usage_log(
+        username=current_user["username"],
+        ip=client_ip,
+        action=action_type,
+        status="SUCCESS",
+        details=f"article_id={req.article_id}, title={req.title[:40]}"
+    )
+    return res
+
+@app.get("/api/bookmarks")
+async def api_get_bookmarks(
+    current_user: dict = Depends(get_current_user_required)
+):
+    """현재 로그인한 사용자의 전체 북마크 목록을 반환합니다."""
+    bookmarks = get_user_bookmarks(current_user["id"])
+    return {
+        "status": "success",
+        "total_count": len(bookmarks),
+        "bookmarks": bookmarks
+    }
+
+@app.get("/api/bookmarks/ids")
+async def api_get_bookmark_ids(
+    current_user: dict = Depends(get_current_user_required)
+):
+    """현재 로그인한 사용자가 북마크한 기사 article_id 목록만 빠르게 반환합니다."""
+    ids = get_user_bookmarked_article_ids(current_user["id"])
+    return {
+        "status": "success",
+        "ids": ids
     }
 
 # --- Admin Dashboard Endpoints ---

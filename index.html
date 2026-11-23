@@ -350,13 +350,22 @@
                 </div>
             </div>
 
-            <!-- Hot Topic & Keyword Pills -->
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar text-xs">
-                <span class="text-slate-400 font-semibold shrink-0 flex items-center gap-1 mr-1">
-                    <i class="fa-solid fa-fire text-amber-500 text-[11px]"></i>추천 키워드:
-                </span>
-                <div id="hot-keywords" class="flex items-center gap-1.5 flex-nowrap">
-                    <!-- Dynamic popular keywords & curated tags -->
+            <!-- Hot Topic & Keyword Pills + Bookmark Filter -->
+            <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1 custom-scrollbar text-xs">
+                <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                    <span class="text-slate-400 font-semibold shrink-0 flex items-center gap-1 mr-1">
+                        <i class="fa-solid fa-fire text-amber-500 text-[11px]"></i>추천 키워드:
+                    </span>
+                    <div id="hot-keywords" class="flex items-center gap-1.5 flex-nowrap">
+                        <!-- Dynamic popular keywords & curated tags -->
+                    </div>
+                </div>
+                <div class="shrink-0 flex items-center">
+                    <button id="btn-filter-bookmark" onclick="toggleBookmarkOnlyFilter()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 text-slate-600 font-bold transition shadow-xs">
+                        <i id="icon-filter-bookmark" class="fa-regular fa-bookmark text-amber-500"></i>
+                        <span>북마크만 보기</span>
+                        <span id="badge-bookmark-count" class="hidden ml-1 px-1.5 py-0.2 text-[10px] bg-amber-100 text-amber-800 rounded-full font-extrabold">0</span>
+                    </button>
                 </div>
             </div>
         </section>
@@ -369,9 +378,9 @@
             </div>
 
             <div id="empty-state" class="hidden py-24 text-center text-slate-500 space-y-3 bg-white/60 border border-slate-200 rounded-3xl">
-                <i class="fa-regular fa-folder-open text-5xl text-slate-400"></i>
-                <p class="text-base font-semibold text-slate-700">검색 조건에 일치하는 IT 트렌드 이슈가 없습니다.</p>
-                <p class="text-xs text-slate-400">다른 키워드나 태그명으로 다시 검색해 보세요.</p>
+                <i id="empty-state-icon" class="fa-regular fa-folder-open text-5xl text-slate-400"></i>
+                <p id="empty-state-title" class="text-base font-semibold text-slate-700">검색 조건에 일치하는 IT 트렌드 이슈가 없습니다.</p>
+                <p id="empty-state-desc" class="text-xs text-slate-400">다른 키워드나 태그명으로 다시 검색해 보세요.</p>
             </div>
 
             <div id="cards-grid" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -759,6 +768,9 @@
                     loadPrepData();
                 }
 
+                // 로그인 사용자 북마크 목록 동기화
+                loadUserBookmarks();
+
                 // 로그인 사용자 계정에 맞춰 챗봇 대화방 목록 및 내역 즉시 전환
                 initChatSession();
             } else {
@@ -781,6 +793,9 @@
             localStorage.removeItem('techprep_auth_token');
             authToken = null;
             currentUser = null;
+            userBookmarkedIds.clear();
+            isBookmarkOnlyFilter = false;
+            updateBookmarkFilterUI();
             chatRooms = [];
             activeRoomId = null;
             const messagesContainer = document.getElementById('chat-messages');
@@ -1666,6 +1681,8 @@
         let searchQuery = '';
         let currentPage = 1;
         const PAGE_SIZE = 6;
+        let isBookmarkOnlyFilter = false;
+        let userBookmarkedIds = new Set();
 
         // 5 Domain Bright Badge & Accent Box Styles
         const STYLES = {
@@ -1836,6 +1853,9 @@
             loading.classList.add('hidden');
 
             const filtered = allArticles.filter(item => {
+                if (isBookmarkOnlyFilter && !userBookmarkedIds.has(item.article_id)) {
+                    return false;
+                }
                 if (!searchQuery) return true;
                 const keywordsStr = (item.keywords || []).join(' ');
                 const targetText = `${item.title} ${item.summary} ${item.source} ${item.category} ${item.interview_insight || ''} ${item.target_role || ''} ${keywordsStr}`.toLowerCase();
@@ -1846,6 +1866,20 @@
                 grid.classList.add('hidden');
                 if (paginationContainer) paginationContainer.classList.add('hidden');
                 empty.classList.remove('hidden');
+
+                const iconEl = document.getElementById('empty-state-icon');
+                const titleEl = document.getElementById('empty-state-title');
+                const descEl = document.getElementById('empty-state-desc');
+
+                if (isBookmarkOnlyFilter) {
+                    if (iconEl) iconEl.className = 'fa-regular fa-bookmark text-5xl text-amber-400';
+                    if (titleEl) titleEl.textContent = '북마크한 기사가 없습니다.';
+                    if (descEl) descEl.textContent = '마음에 드는 기술 기사 카드의 북마크 버튼(★)을 눌러 나만의 학습 목록을 만들어 보세요!';
+                } else {
+                    if (iconEl) iconEl.className = 'fa-regular fa-folder-open text-5xl text-slate-400';
+                    if (titleEl) titleEl.textContent = '검색 조건에 일치하는 IT 트렌드 이슈가 없습니다.';
+                    if (descEl) descEl.textContent = '다른 키워드나 태그명으로 다시 검색해 보세요.';
+                }
                 return;
             }
 
@@ -1865,16 +1899,30 @@
 
             grid.innerHTML = pageItems.map(item => {
                 const style = STYLES[item.category] || STYLES['IT 트렌드'];
+                const isBookmarked = userBookmarkedIds.has(item.article_id);
                 
                 const keywords = (item.keywords || []).map(kw => `
                     <button onclick="filterByKeyword('${kw}')" class="text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-slate-600 font-medium px-2.5 py-0.5 rounded-lg border border-slate-200 transition">#${kw}</button>
                 `).join('');
 
+                const bookmarkBtnHtml = `
+                    <button 
+                        onclick="toggleBookmark('${item.article_id}', this)" 
+                        title="${isBookmarked ? '북마크 해제' : '북마크 저장'}"
+                        class="p-1.5 rounded-xl border transition flex items-center justify-center ${
+                            isBookmarked 
+                                ? 'bg-amber-50 border-amber-300 text-amber-500 hover:bg-amber-100' 
+                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200'
+                        }">
+                        <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
+                    </button>
+                `;
+
                 const articleDomId = item.article_id ? `article-card-${item.article_id}` : `article-card-idx-${item.original_index ?? ''}`;
                 return `
                     <article id="${articleDomId}" data-article-id="${item.article_id || ''}" data-article-title="${(item.title || '').replace(/"/g, '&quot;')}" class="article-card-item flex flex-col justify-between bg-white border border-slate-200/90 rounded-3xl p-6 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 transition duration-200 ${style.border} shadow-sm">
                         <div class="space-y-4">
-                            <!-- Category Badge, Target Role, and Source -->
+                            <!-- Category Badge, Target Role, Source, and Bookmark -->
                             <div class="flex items-center justify-between text-xs gap-2 flex-wrap">
                                 <div class="flex items-center gap-2">
                                     <span class="inline-flex items-center px-3 py-1 rounded-full border text-[11px] font-bold ${style.badge}">
@@ -1884,9 +1932,12 @@
                                         <i class="fa-solid fa-user-gear text-[10px] mr-1"></i>${item.target_role || 'IT 공통'}
                                     </span>
                                 </div>
-                                <span class="text-slate-500 text-xs font-medium flex items-center gap-1.5">
-                                    <i class="fa-regular fa-newspaper text-slate-400"></i>${item.source}
-                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-500 text-xs font-medium flex items-center gap-1.5">
+                                        <i class="fa-regular fa-newspaper text-slate-400"></i>${item.source}
+                                    </span>
+                                    ${bookmarkBtnHtml}
+                                </div>
                             </div>
 
                             <!-- Title -->
@@ -2031,6 +2082,123 @@
             const grid = document.getElementById('cards-grid');
             if (grid) {
                 window.scrollTo({ top: grid.offsetTop - 120, behavior: 'smooth' });
+            }
+        }
+
+        // ==================== Bookmark State Management ====================
+        async function loadUserBookmarks() {
+            if (!authToken) {
+                userBookmarkedIds.clear();
+                updateBookmarkFilterUI();
+                return;
+            }
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/bookmarks/ids`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success' && Array.isArray(data.ids)) {
+                        userBookmarkedIds = new Set(data.ids);
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to load user bookmarks:', err);
+            }
+            updateBookmarkFilterUI();
+            renderCards();
+        }
+
+        function updateBookmarkFilterUI() {
+            const btn = document.getElementById('btn-filter-bookmark');
+            const icon = document.getElementById('icon-filter-bookmark');
+            const badge = document.getElementById('badge-bookmark-count');
+
+            const count = userBookmarkedIds.size;
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            if (btn && icon) {
+                if (isBookmarkOnlyFilter) {
+                    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-400 bg-amber-50 text-amber-700 font-extrabold transition shadow-xs ring-2 ring-amber-200';
+                    icon.className = 'fa-solid fa-bookmark text-amber-500';
+                } else {
+                    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 text-slate-600 font-bold transition shadow-xs';
+                    icon.className = 'fa-regular fa-bookmark text-amber-500';
+                }
+            }
+        }
+
+        function toggleBookmarkOnlyFilter() {
+            isBookmarkOnlyFilter = !isBookmarkOnlyFilter;
+            currentPage = 1;
+            updateBookmarkFilterUI();
+            renderCards();
+        }
+
+        async function toggleBookmark(articleId, btnElem) {
+            if (!currentUser || !authToken) {
+                alert('북마크 기능은 로그인 후 이용하실 수 있습니다.');
+                return;
+            }
+
+            const targetArticle = allArticles.find(a => a.article_id === articleId);
+            if (!targetArticle) return;
+
+            // 낙관적 UI 업데이트 (빠른 반응)
+            const wasBookmarked = userBookmarkedIds.has(articleId);
+            if (wasBookmarked) {
+                userBookmarkedIds.delete(articleId);
+            } else {
+                userBookmarkedIds.add(articleId);
+            }
+            updateBookmarkFilterUI();
+            renderCards();
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/bookmarks/toggle`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        article_id: targetArticle.article_id,
+                        title: targetArticle.title || '기사 제목 없음',
+                        link: targetArticle.link || '',
+                        category: targetArticle.category || '기타',
+                        source: targetArticle.source || '',
+                        summary: targetArticle.summary || '',
+                        interview_insight: targetArticle.interview_insight || ''
+                    })
+                });
+
+                if (!res.ok) {
+                    throw new Error('북마크 처리 실패');
+                }
+
+                const data = await res.json();
+                if (data.bookmarked) {
+                    userBookmarkedIds.add(articleId);
+                } else {
+                    userBookmarkedIds.delete(articleId);
+                }
+                updateBookmarkFilterUI();
+                renderCards();
+            } catch (err) {
+                console.error('Error toggling bookmark:', err);
+                // 롤백
+                if (wasBookmarked) {
+                    userBookmarkedIds.add(articleId);
+                } else {
+                    userBookmarkedIds.delete(articleId);
+                }
+                updateBookmarkFilterUI();
+                renderCards();
+                alert('북마크 저장/해제 중 오류가 발생했습니다.');
             }
         }
 
