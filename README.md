@@ -55,13 +55,32 @@
 
 ### 6. 📊 관리자 전용 보안 관제탑 (Admin Operations Dashboard)
 - **실시간 사용자 권한 제어**: 회원 목록 조회 및 각 회원의 API 키 사용 권한을 원클릭으로 **`[허용(Approve)]`** / **`[차단(Block)]`** 전환.
+- **`admin` 계정 최상단 고정**: 신규 회원 가입이나 정렬 상태 변경과 무관하게 `admin` 관리자 계정은 항상 테이블 최상단(1행)에 고정 표시되며 `관리자 계정보호`가 적용됩니다.
 - **다차원 감사 로그 (Audit Logs)**:
   - `로그인 시도 로그(login_logs)`: 시각, 계정명, IP, 성공/실패 여부 및 실패 원인 실시간 추적.
-  - `API/조회 사용 로그(usage_logs)`: 사용자별 챗봇 호출, 대시보드 조회, 프론트엔드 오류(`FRONTEND_ERROR`) 통합 모니터링.
+  - `API/조회 사용 로그(usage_logs)`: 사용자별 챗봇 호출, 대시보드 조회, 프론트엔드 오류(`FRONTEND_ERROR`), 기사 자동 정리(`ARTICLE_AUTO_CLEANUP`) 통합 모니터링.
   - **빠른 필터링**: `[실패·차단만 보기]`, `[챗봇 API만 보기]`, `[대시보드 조회 숨기기]` 제공.
 - **Gemini 사용량 및 쿼터 실시간 모니터링**:
   - API 연동 상태(`ACTIVE`), 누적 호출 횟수, 토큰 사용량 실시간 집계.
   - 무료 티어 한도 대비 잔여량 및 소진율 게이지 바 제공.
+
+### 7. 📑 오늘의 AI 보안 & 운영 리포트 (Daily AI Audit Report)
+- **관제탑 내부 서브 뷰/탭 전환**: 관제탑 모달 헤더 상단의 `[관제 현황]` ↔ `[오늘의 AI 리포트]` 탭을 통해 세로 스크롤 과대화 없이 '다음 페이지' 형태로 화면을 깔끔하게 전환합니다.
+- **일자별 감사 데이터 종합 분석**: 선택한 날짜(`YYYY-MM-DD`, 기본값: 오늘)를 기준으로 누적 감사 로그, 로그인 성공/실패율, 프론트엔드 오류, 차단 이벤트, 토큰 소진량을 AI 수석 감사관이 종합 진단합니다.
+- **날짜별 영구 저장 & 멱등성 (UPSERT)**:
+  - `daily_ai_reports` 테이블에 날짜 단위로 마크다운 리포트와 분석 통계 메타데이터를 영구 저장합니다.
+  - 동일 날짜 재생성 시 중복 레코드 없이 최신 리포트로 갱신되며, 상단의 **저장된 날짜 알약(Pills)**을 클릭해 과거 리포트를 즉시 재조회할 수 있습니다.
+  - 네트워크 단절이나 AI API 호출 불가 시에도 내장 진단 규칙 엔진 기반 폴백 리포트가 안전하게 작동합니다.
+
+### 8. 🔖 대시보드 북마크 & 30일 기사 자동 정리 보호 연계
+- **대시보드 중심 북마크**: 별도의 마이페이지 없이 메인 대시보드 기사 카드의 북마크 버튼(★) 토글을 통해 사용자 계정별로 관심 기사를 저장 및 해제합니다.
+- **'북마크만 보기' 필터**: 상단 추천 키워드 영역 옆의 토글 버튼으로 북마크된 기사만 모아볼 수 있으며, 북마크가 0건일 때도 친절한 안내 메시지를 표시합니다.
+- **30일 자동 삭제 대상 제외(보호)**: 30일 경과 기사 자동 정리(`DELETE`) 및 미리보기(`Preview`) 실행 시, **사용자가 북마크한 기사는 30일이 경과했더라도 삭제 대상에서 완전히 제외되어 영구 보존**됩니다.
+
+### 9. 🧹 30일 경과 기사 자동 정리 및 미리보기 (Data Lifecycle Engine)
+- **자동 정리 실행**: 서버 시작 시(`startup_event`) 및 백그라운드 주기 작업(12시간)으로 30일(`ARTICLE_RETENTION_DAYS`)이 지난 오래된 기사를 JSON 파일 및 DB에서 자동 정리합니다.
+- **삭제 대상 미리보기 (Preview)**: 관리자 관제탑 내 전용 카드를 통해 실제로 기사가 삭제되기 전 어떤 기사들이 30일 경과 대상인지 후보 목록과 건수를 사전 점검하고 필요 시 수동 정리를 즉시 실행할 수 있습니다.
+- **감사 로그 상세 기록**: 삭제 실행 시 삭제된 기준일, 건수뿐 아니라 삭제된 대표 기사 제목 요약(상위 3건 + 외 N건)을 관리자 감사 로그(`ARTICLE_AUTO_CLEANUP`)에 영구 보존합니다.
 
 ---
 
@@ -118,6 +137,14 @@
 | `GET` | `/api/chats/{room_id}/messages` | 특정 대화방의 과거 메시지 내역 조회 | Bearer Token |
 | `DELETE` | `/api/chats/{room_id}` | 특정 대화방 삭제 | Bearer Token |
 | `POST` | `/api/audit/client-error` | **프론트엔드 런타임/문법 오류 실시간 수집 및 감사 로그 적재** | Public / Token |
+| `POST` | `/api/bookmarks/toggle` | 로그인 사용자의 기사 북마크 추가/해제 (토글) | Bearer Token |
+| `GET` | `/api/bookmarks` | 현재 사용자가 저장한 전체 북마크 목록 조회 | Bearer Token |
+| `GET` | `/api/bookmarks/ids` | 현재 사용자가 저장한 북마크 ID 배열 고속 조회 | Bearer Token |
+| `GET` | `/api/admin/articles/cleanup-preview` | 30일 경과 기사 자동 삭제 대상 목록 및 건수 미리보기 | Admin Only |
+| `POST` | `/api/admin/articles/cleanup` | 30일 경과 기사 수동 즉시 정리 실행 (감사 로그 자동 기록) | Admin Only |
+| `GET` | `/api/admin/reports/dates` | 저장된 날짜별 AI 감사 리포트 목록 조회 | Admin Only |
+| `GET` | `/api/admin/reports/{report_date}` | 특정 일자의 AI 운영/보안 감사 리포트 조회 | Admin Only |
+| `POST` | `/api/admin/reports/generate` | 특정 일자 감사 데이터 기반 AI 감사 리포트 생성 및 저장 (UPSERT) | Admin Only |
 | `GET` | `/api/admin/stats` | 관리자 대시보드 종합 지표, 토큰 사용량, 사용자 통계 조회 | Admin Only |
 | `POST` | `/api/admin/users/status` | 특정 사용자의 API 권한 변경 (`approved` / `blocked`) | Admin Only |
 | `POST` | `/api/admin/users/bulk-approve` | 승인 대기 회원 일괄 승인 | Admin Only |
