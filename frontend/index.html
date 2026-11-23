@@ -1260,8 +1260,17 @@
             const tbody = document.getElementById('adm-users-table-body');
             const bulkContainer = document.getElementById('adm-bulk-approve-container');
 
+            // admin 계정을 항상 최상단에 고정하고 나머지는 계정명/역할 순으로 정렬
+            const sortedUsers = [...(users || [])].sort((a, b) => {
+                const aIsAdmin = (a.role === 'admin' || a.username === 'admin');
+                const bIsAdmin = (b.role === 'admin' || b.username === 'admin');
+                if (aIsAdmin && !bIsAdmin) return -1;
+                if (!aIsAdmin && bIsAdmin) return 1;
+                return (a.username || '').localeCompare(b.username || '');
+            });
+
             // Check pending users count for bulk approve
-            const pendingUsers = (users || []).filter(u => u.api_status === 'pending' && u.role !== 'admin');
+            const pendingUsers = sortedUsers.filter(u => u.api_status === 'pending' && u.role !== 'admin');
             if (bulkContainer) {
                 if (pendingUsers.length > 0) {
                     bulkContainer.innerHTML = `
@@ -1279,12 +1288,12 @@
                 }
             }
 
-            if (!users || users.length === 0) {
+            if (!sortedUsers || sortedUsers.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400">등록된 회원이 없습니다.</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = users.map(u => {
+            tbody.innerHTML = sortedUsers.map(u => {
                 let statusBadge = '';
                 if (u.api_status === 'approved') {
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">허용 (approved)</span>';
@@ -2538,12 +2547,34 @@
         // --- AI Mentor Chatbot UI Logic & Window Drag / Docking Engine ---
         let chatPanelDockState = 'bottom-right'; // 'bottom-right' or 'bottom-left'
         let chatPanelCollapsed = false;
+        let lastPanelDragCoords = null; // { left, top } (px 단위) 드래그 이력 저장
+
+        function clampChatPanelPosition(left, top, panelWidth, panelHeight) {
+            const margin = 8;
+            const maxLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
+            const maxTop = Math.max(margin, window.innerHeight - panelHeight - margin);
+            const clampedLeft = Math.max(margin, Math.min(left, maxLeft));
+            const clampedTop = Math.max(margin, Math.min(top, maxTop));
+            return { left: clampedLeft, top: clampedTop };
+        }
 
         function toggleChat() {
             const panel = document.getElementById('chat-panel');
             const isHidden = panel.classList.contains('hidden');
             if (isHidden) {
                 panel.classList.remove('hidden');
+                // 만약 접힌 상태에서 열렸다면 복원 처리
+                if (chatPanelCollapsed) {
+                    toggleChatCollapse();
+                } else if (lastPanelDragCoords && window.innerWidth >= 768) {
+                    const rect = panel.getBoundingClientRect();
+                    const clamped = clampChatPanelPosition(lastPanelDragCoords.left, lastPanelDragCoords.top, rect.width || 500, rect.height || 640);
+                    panel.style.position = 'fixed';
+                    panel.style.left = `${clamped.left}px`;
+                    panel.style.top = `${clamped.top}px`;
+                    panel.style.right = 'auto';
+                    panel.style.bottom = 'auto';
+                }
                 document.getElementById('chat-input').focus();
             } else {
                 panel.classList.add('hidden');
@@ -2556,13 +2587,59 @@
             chatPanelCollapsed = !chatPanelCollapsed;
 
             if (chatPanelCollapsed) {
+                // [최소화 진입]
+                // 1. 드래그된 이력이 없거나 현재 상대 위치인 경우 현재 화면 기준 좌표를 저장
+                if (window.innerWidth >= 768) {
+                    const rect = panel.getBoundingClientRect();
+                    if (!lastPanelDragCoords) {
+                        lastPanelDragCoords = { left: rect.left, top: rect.top };
+                    }
+                    // 최소화 상태에서도 패널 상단 위치를 현재 위치로 고정 (아래로 밀림 방지)
+                    panel.style.position = 'fixed';
+                    panel.style.left = `${rect.left}px`;
+                    panel.style.top = `${rect.top}px`;
+                    panel.style.right = 'auto';
+                    panel.style.bottom = 'auto';
+                }
+
                 panel.style.height = '62px';
                 panel.style.overflow = 'hidden';
                 if (icon) icon.className = 'fa-solid fa-window-maximize text-[10px] pb-1';
             } else {
+                // [최소화 복원/확대]
                 panel.style.height = '';
                 panel.style.overflow = '';
                 if (icon) icon.className = 'fa-solid fa-window-minimize text-[10px] pb-1';
+
+                // 데스크톱 환경 복원 위치 및 뷰포트 클램핑 보정
+                if (window.innerWidth >= 768) {
+                    const targetHeight = Math.min(640, window.innerHeight * 0.9);
+                    const targetWidth = Math.min(500, window.innerWidth * 0.96);
+
+                    if (lastPanelDragCoords) {
+                        // 저장해둔 드래그 좌표 복원 및 뷰포트 벗어남(특히 아래쪽 잘림) 자동 보정
+                        const clamped = clampChatPanelPosition(lastPanelDragCoords.left, lastPanelDragCoords.top, targetWidth, targetHeight);
+                        panel.style.position = 'fixed';
+                        panel.style.left = `${clamped.left}px`;
+                        panel.style.top = `${clamped.top}px`;
+                        panel.style.right = 'auto';
+                        panel.style.bottom = 'auto';
+                    } else {
+                        // 드래그 이력이 없으면 기본 도킹 안전 상태로 원복
+                        panel.style.position = '';
+                        panel.style.top = '';
+                        panel.style.left = '';
+                        panel.style.right = '';
+                        panel.style.bottom = '';
+                    }
+                } else {
+                    // 모바일에서는 전체화면 기본 스타일 유지
+                    panel.style.position = '';
+                    panel.style.top = '';
+                    panel.style.left = '';
+                    panel.style.right = '';
+                    panel.style.bottom = '';
+                }
             }
         }
 
@@ -2576,7 +2653,9 @@
                 chatPanelDockState = mode;
             }
 
-            // 커스텀 드래그 인라인 스타일 초기화
+            // 도킹 전환 시 커스텀 드래그 인라인 스타일 및 저장 좌표 리셋
+            lastPanelDragCoords = null;
+            panel.style.position = '';
             panel.style.top = '';
             panel.style.left = '';
             panel.style.right = '';
@@ -2601,7 +2680,7 @@
             let initialPanelLeft = 0, initialPanelTop = 0;
 
             const onPointerDown = (e) => {
-                // 상단 버튼(닫기, 도킹 등) 클릭 시에는 드래그 방지
+                // 상단 버튼(닫기, 도킹, 최소화 등) 클릭 시에는 드래그 방지
                 if (e.target.closest('button') || e.target.closest('input') || e.target.closest('a')) return;
                 if (window.innerWidth < 768) return; // 모바일 전체화면에서는 드래그 비활성화
 
@@ -2633,20 +2712,17 @@
                 const deltaX = curX - startX;
                 const deltaY = curY - startY;
 
-                let newLeft = initialPanelLeft + deltaX;
-                let newTop = initialPanelTop + deltaY;
+                const rawLeft = initialPanelLeft + deltaX;
+                const rawTop = initialPanelTop + deltaY;
 
-                // 뷰포트 경계 클램핑 (화면 밖 벗어남 방지)
+                // 뷰포트 경계 클램핑 (상하좌우 화면 밖 벗어남 방지)
                 const panelWidth = panel.offsetWidth;
                 const panelHeight = panel.offsetHeight;
-                const maxLeft = window.innerWidth - panelWidth - 8;
-                const maxTop = window.innerHeight - panelHeight - 8;
+                const clamped = clampChatPanelPosition(rawLeft, rawTop, panelWidth, panelHeight);
 
-                newLeft = Math.max(8, Math.min(newLeft, maxLeft));
-                newTop = Math.max(8, Math.min(newTop, maxTop));
-
-                panel.style.left = `${newLeft}px`;
-                panel.style.top = `${newTop}px`;
+                panel.style.left = `${clamped.left}px`;
+                panel.style.top = `${clamped.top}px`;
+                lastPanelDragCoords = { left: clamped.left, top: clamped.top };
 
                 if (e.cancelable) e.preventDefault();
             };
@@ -2655,6 +2731,11 @@
                 if (!isDragging) return;
                 isDragging = false;
                 panel.classList.add('transition-all', 'duration-300');
+
+                // 드래그 종료 시 최종 위치 저장
+                const rect = panel.getBoundingClientRect();
+                lastPanelDragCoords = { left: rect.left, top: rect.top };
+
                 document.removeEventListener('mousemove', onPointerMove);
                 document.removeEventListener('mouseup', onPointerUp);
                 document.removeEventListener('touchmove', onPointerMove);
@@ -2663,6 +2744,26 @@
 
             header.addEventListener('mousedown', onPointerDown);
             header.addEventListener('touchstart', onPointerDown, { passive: true });
+
+            // 창 크기 변경 시 뷰포트 밖으로 밀려나지 않도록 자동 보정
+            window.addEventListener('resize', () => {
+                if (panel.classList.contains('hidden')) return;
+                if (window.innerWidth < 768) {
+                    panel.style.position = '';
+                    panel.style.top = '';
+                    panel.style.left = '';
+                    panel.style.right = '';
+                    panel.style.bottom = '';
+                    return;
+                }
+                if (lastPanelDragCoords) {
+                    const rect = panel.getBoundingClientRect();
+                    const clamped = clampChatPanelPosition(lastPanelDragCoords.left, lastPanelDragCoords.top, rect.width, rect.height);
+                    panel.style.left = `${clamped.left}px`;
+                    panel.style.top = `${clamped.top}px`;
+                    lastPanelDragCoords = { left: clamped.left, top: clamped.top };
+                }
+            });
         }
 
         function sendQuickPrompt(promptText) {

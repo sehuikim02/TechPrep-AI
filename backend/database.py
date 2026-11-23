@@ -494,7 +494,11 @@ def bulk_approve_users(usernames: Optional[List[str]] = None) -> int:
 
 def list_all_users() -> List[dict]:
     with get_db_cursor() as cursor:
-        cursor.execute("SELECT id, username, role, api_status, failed_login_attempts, block_reason, created_at, updated_at FROM users ORDER BY id ASC")
+        cursor.execute("""
+            SELECT id, username, role, api_status, failed_login_attempts, block_reason, created_at, updated_at 
+            FROM users 
+            ORDER BY CASE WHEN role = 'admin' OR username = 'admin' THEN 0 ELSE 1 END, id ASC
+        """)
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
 
@@ -736,6 +740,7 @@ def get_security_and_usage_stats() -> dict:
             FROM users u
             LEFT JOIN login_logs l ON u.username = l.username
             GROUP BY u.username, u.role, u.api_status, u.failed_login_attempts, u.block_reason
+            ORDER BY CASE WHEN u.role = 'admin' OR u.username = 'admin' THEN 0 ELSE 1 END, u.username ASC
         """)
         user_stats = [format_row_dict(r) for r in cursor.fetchall()]
 
