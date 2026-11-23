@@ -29,3 +29,8 @@ Thumbs.db
 *.db
 *.sqlite3
 data/*.db
+
+# E2E Test Artifacts
+tests/e2e/artifacts/*
+!tests/e2e/artifacts/.gitkeep
+.pytest_cache/

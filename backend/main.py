@@ -438,6 +438,7 @@ async def register(req: RegisterRequest, request: Request):
     pw_hash = hash_password(password)
     user = create_user(username=username, password_hash=pw_hash, role="user", api_status="pending")
     record_usage_log(username, client_ip, "REGISTER", "SUCCESS", details="New user registered with pending status")
+    record_login_log(username, client_ip, "SUCCESS", failure_reason="Initial registration auto-login")
 
     token = create_access_token({
         "sub": user["username"],
