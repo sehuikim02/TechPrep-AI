@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import time
 import uuid
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Header, Request, Depends, status
@@ -628,6 +629,79 @@ async def admin_get_login_logs(limit: int = 50, username: Optional[str] = None, 
 @app.get("/api/admin/logs/usage")
 async def admin_get_usage_logs(limit: int = 50, username: Optional[str] = None, admin: dict = Depends(require_admin_user)):
     return get_usage_logs(limit=limit, username=username)
+
+# --- Client Error Telemetry Collection (Front-end Error Ingestion) ---
+class ClientErrorLogRequest(BaseModel):
+    message: str
+    source: Optional[str] = None
+    lineno: Optional[int] = None
+    colno: Optional[int] = None
+    stack: Optional[str] = None
+    context: Optional[str] = "global"
+    url: Optional[str] = None
+    user_agent: Optional[str] = None
+
+# In-memory cooldown cache to debounce duplicate client error storms: {error_signature: last_recorded_timestamp}
+_client_error_cooldown_cache: Dict[str, float] = {}
+
+@app.post("/api/audit/client-error")
+async def report_client_error(
+    err_req: ClientErrorLogRequest, 
+    request: Request,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = get_current_user_optional(authorization)
+        client_ip = get_client_ip(request) if request else "unknown"
+        username = user["username"] if user else "anonymous"
+
+        # Construct deduplication signature (message + source + lineno + context)
+        sig = f"{err_req.context}:{err_req.message[:80]}:{err_req.source}:{err_req.lineno}"
+        now_ts = time.time()
+        last_logged = _client_error_cooldown_cache.get(sig, 0.0)
+
+        # 5-second cooldown for identical error floods
+        if now_ts - last_logged < 5.0:
+            return {"status": "throttled", "message": "Duplicate error within cooldown period"}
+
+        _client_error_cooldown_cache[sig] = now_ts
+        # Keep cooldown cache size bounded
+        if len(_client_error_cooldown_cache) > 500:
+            oldest_keys = sorted(_client_error_cooldown_cache.keys(), key=lambda k: _client_error_cooldown_cache[k])[:100]
+            for k in oldest_keys:
+                _client_error_cooldown_cache.pop(k, None)
+
+        loc_str = ""
+        if err_req.source:
+            loc_str = f" @ {err_req.source}:{err_req.lineno or 0}"
+
+        detail_parts = [
+            f"Context: [{err_req.context}]",
+            f"Error: {err_req.message}{loc_str}"
+        ]
+        if err_req.stack:
+            clean_stack = " ".join(err_req.stack.strip().split()[:20])
+            detail_parts.append(f"Stack: {clean_stack}")
+
+        detail_msg = " | ".join(detail_parts)
+        if len(detail_msg) > 500:
+            detail_msg = detail_msg[:497] + "..."
+
+        record_usage_log(
+            username=username,
+            ip=client_ip,
+            action="FRONTEND_ERROR",
+            status="CLIENT_ERROR",
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            model="Browser/Frontend",
+            details=detail_msg
+        )
+        return {"status": "recorded", "action": "FRONTEND_ERROR"}
+    except Exception as ex:
+        # Never fail or crash client error ingestion
+        return {"status": "error", "detail": str(ex)}
 
 # --- Standard DevOps & Server Endpoints ---
 @app.get("/api/status")

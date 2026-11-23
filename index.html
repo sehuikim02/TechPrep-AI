@@ -557,6 +557,104 @@
 
     <!-- Logic Script -->
     <script>
+        // ==================== Global Client Error Telemetry & Reporting Engine ====================
+        // 이 모듈은 모든 다른 비즈니스 로직 스크립트보다 최우선으로 등록되어,
+        // 현재 및 향후 추가되는 모든 기능에서 발생하는 예외/Rejection을 자동 감지하고 백엔드 감사 로그로 보고합니다.
+        (function() {
+            let _lastReportedTime = 0;
+            const _reportedSignatures = new Set();
+
+            window.reportClientError = async function(errorOrMsg, context = 'global', extra = {}) {
+                try {
+                    const now = Date.now();
+                    let message = '';
+                    let source = extra.source || '';
+                    let lineno = extra.lineno || 0;
+                    let colno = extra.colno || 0;
+                    let stack = extra.stack || '';
+
+                    if (typeof errorOrMsg === 'string') {
+                        message = errorOrMsg;
+                    } else if (errorOrMsg && typeof errorOrMsg === 'object') {
+                        message = errorOrMsg.message || String(errorOrMsg);
+                        stack = errorOrMsg.stack || stack;
+                        if (errorOrMsg.filename) source = errorOrMsg.filename;
+                        if (errorOrMsg.lineno) lineno = errorOrMsg.lineno;
+                        if (errorOrMsg.colno) colno = errorOrMsg.colno;
+                    } else {
+                        message = String(errorOrMsg);
+                    }
+
+                    // 브라우저 확장 프로그램 등 외부 주입 스크립트 에러 필터링
+                    if (source && (source.startsWith('chrome-extension://') || source.startsWith('moz-extension://'))) {
+                        return;
+                    }
+
+                    // 클라이언트 사이드 디바운스 및 중복 방지 (동일 에러 3초 내 재보고 차단)
+                    const sig = `${context}:${message.slice(0, 80)}:${source}:${lineno}`;
+                    if (_reportedSignatures.has(sig) && (now - _lastReportedTime < 3000)) {
+                        return;
+                    }
+                    _reportedSignatures.add(sig);
+                    _lastReportedTime = now;
+                    if (_reportedSignatures.size > 100) {
+                        _reportedSignatures.clear();
+                    }
+
+                    const payload = {
+                        message: message || 'Unknown client error',
+                        source: source || window.location.pathname,
+                        lineno: Number(lineno) || 0,
+                        colno: Number(colno) || 0,
+                        stack: stack ? String(stack).slice(0, 1000) : '',
+                        context: context || 'global',
+                        url: window.location.href,
+                        user_agent: navigator.userAgent
+                    };
+
+                    const token = localStorage.getItem('techprep_auth_token');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                    const backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                        ? ''
+                        : (window.location.hostname.includes('github.io') ? 'https://techprep-ai-vspr.onrender.com' : '');
+
+                    // Beacon 또는 fetch로 비동기 전송 (네트워크 장애 시에도 콘솔 루프 방지)
+                    fetch(`${backendUrl}/api/audit/client-error`, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(payload)
+                    }).catch(() => {
+                        // 에러 리포트 전송 실패 시 무한 루프 방지를 위해 조용히 무시
+                    });
+                } catch (e) {
+                    // 리포터 자체의 예외 무시
+                }
+            };
+
+            // 1. 일반 자바스크립트 런타임/구문/타입 에러 전역 리스너
+            window.addEventListener('error', function(event) {
+                try {
+                    window.reportClientError(event.error || event.message, 'unhandled_error', {
+                        source: event.filename,
+                        lineno: event.lineno,
+                        colno: event.colno,
+                        stack: event.error ? event.error.stack : ''
+                    });
+                } catch (e) {}
+            });
+
+            // 2. 비동기 Promise Unhandled Rejection 전역 리스너
+            window.addEventListener('unhandledrejection', function(event) {
+                try {
+                    const reason = event.reason;
+                    const msg = (reason && reason.message) ? reason.message : String(reason);
+                    const stack = (reason && reason.stack) ? reason.stack : '';
+                    window.reportClientError(msg, 'unhandled_rejection', { stack: stack });
+                } catch (e) {}
+            });
+        })();
 
         // ==================== Flexible API Base URL & Auth State ====================
         const BACKEND_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -1432,20 +1530,27 @@
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">SUCCESS</span>';
                 } else if (l.status === 'FORBIDDEN') {
                     statusBadge = '<span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold">403 FORBIDDEN</span>';
+                } else if (l.status === 'CLIENT_ERROR' || l.action === 'FRONTEND_ERROR') {
+                    statusBadge = '<span class="px-2 py-0.5 rounded-md bg-rose-600 text-white font-extrabold flex items-center gap-1 w-fit"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i>CLIENT_ERR</span>';
                 } else {
                     statusBadge = `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold">${l.status}</span>`;
                 }
 
+                const isFrontendErr = (l.action === 'FRONTEND_ERROR' || l.status === 'CLIENT_ERROR');
+                const actionBadge = isFrontendErr
+                    ? `<span class="font-extrabold text-rose-600 flex items-center gap-1"><i class="fa-brands fa-js text-amber-500"></i>${l.action}</span>`
+                    : `<span class="font-semibold text-indigo-700">${l.action}</span>`;
+
                 return `
-                    <tr class="hover:bg-slate-50/70 transition">
+                    <tr class="hover:bg-slate-50/70 transition ${isFrontendErr ? 'bg-rose-50/30' : ''}">
                         <td class="py-2 px-4 text-slate-500 font-mono text-[11px]">${l.timestamp}</td>
                         <td class="py-2 px-4 font-bold text-slate-800">${l.username}</td>
-                        <td class="py-2 px-4 font-semibold text-indigo-700">${l.action}</td>
+                        <td class="py-2 px-4">${actionBadge}</td>
                         <td class="py-2 px-4">${statusBadge}</td>
                         <td class="py-2 px-4 text-right font-mono text-slate-600 font-medium">
                             ${l.prompt_tokens} / ${l.completion_tokens} / <strong class="text-purple-700">${l.total_tokens}</strong>
                         </td>
-                        <td class="py-2 px-4 text-slate-500 truncate max-w-xs" title="${l.details || ''}">${l.details || '-'}</td>
+                        <td class="py-2 px-4 text-slate-500 truncate max-w-xs font-mono text-[11px]" title="${l.details || ''}">${l.details || '-'}</td>
                     </tr>
                 `;
             }).join('');
