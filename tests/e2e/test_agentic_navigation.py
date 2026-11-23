@@ -49,3 +49,49 @@ def test_agentic_navigation_to_article(page_with_telemetry):
 
     # Should re-trigger highlight on card
     expect(page.locator(".article-card-item.agentic-highlight")).to_be_visible()
+
+def test_agentic_navigation_pending_and_resumed_flow(page_with_telemetry):
+    """
+    [Agentic Navigation Pending & Follow-up E2E 검증]
+    1. 사용자가 키워드 없이 '기사 보여줘' 전송 시 즉시 대시보드 이동을 보류하고 되묻는 문장 출력 확인
+    2. 후속 턴에 단답형 키워드('쿠버네티스')만 전송했을 때 보류된 액션을 이어받아 기사 이동 및 하이라이트 정상 실행 확인
+    """
+    page, telemetry = page_with_telemetry
+
+    page.goto(BASE_URL)
+    page.evaluate("() => localStorage.clear()")
+    page.reload()
+    page.wait_for_load_state("domcontentloaded")
+
+    # 1. Login
+    page.fill("#gate-auth-username", ADMIN_USERNAME)
+    page.fill("#gate-auth-password", ADMIN_PASSWORD)
+    page.click("#gate-auth-submit-btn")
+    expect(page.locator("#top-main-header")).to_be_visible(timeout=10000)
+
+    # 2. Open chat panel
+    page.click("#chat-toggle-btn")
+    expect(page.locator("#chat-panel")).to_be_visible()
+
+    # 3. Turn 1: Send query without keyword ("기사 보여줘")
+    chat_input = page.locator("#chat-input")
+    chat_input.fill("기사 보여줘")
+    chat_input.press("Enter")
+
+    # Verify clarifying question is shown and NO highlight or action badge was triggered
+    clarification_msg = page.locator(".chat-bubble-model").last
+    expect(clarification_msg).to_contain_text("어떤 기사(키워드나 제목, 혹은 관련 기술 주제)로 이동할까요?", timeout=15000)
+    expect(page.locator(".agentic-action-badge")).to_have_count(0)
+    expect(page.locator(".article-card-item.agentic-highlight")).to_have_count(0)
+
+    # 4. Turn 2: Follow-up with keyword only ("쿠버네티스")
+    chat_input.fill("쿠버네티스")
+    chat_input.press("Enter")
+
+    # Verify that the pending action was resumed and the card is now highlighted with badge
+    badge = page.locator(".agentic-action-badge")
+    expect(badge).to_be_visible(timeout=20000)
+    expect(badge).to_contain_text("대시보드에서 기사 위치로 이동함")
+
+    highlighted_card = page.locator(".article-card-item.agentic-highlight")
+    expect(highlighted_card).to_be_visible(timeout=5000)

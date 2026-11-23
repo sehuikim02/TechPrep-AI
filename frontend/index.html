@@ -1978,7 +1978,7 @@
                     fetch(`${BACKEND_BASE_URL}/api/chats`, {
                         method: 'POST',
                         headers: getAuthHeaders(),
-                        body: JSON.stringify({ title: '새 대화' })
+                        body: JSON.stringify({ room_id: newRoomId, title: '새 대화' })
                     }).catch(err => console.log('Backend room sync note:', err));
                 }
             } catch (e) {}
@@ -2240,6 +2240,10 @@
                         ragUsed = !!data.rag_used;
                         routeReason = data.route_reason || "";
                         uiAction = data.ui_action || null;
+                        if (data.room_id && data.room_id !== activeRoomId) {
+                            activeRoomId = data.room_id;
+                            localStorage.setItem(getUserActiveRoomKey(), activeRoomId);
+                        }
                     } else if (response.status === 403) {
                         // 권한 없음 에러 처리: pending 또는 blocked 또는 미로그인
                         const errData = await response.json().catch(() => ({}));
@@ -2307,18 +2311,140 @@
         }
 
         // GitHub Pages 전용 클라이언트 사이드 RAG + 시니어 면접관 지능형 응답 엔진
+        let clientPendingAction = null;
+
+        function searchClientArticleForNavigation(query) {
+            if (!allArticles || allArticles.length === 0) return { article: null, tokens: [] };
+            const low = query.toLowerCase().trim();
+            const queryTokens = low.match(/[A-Za-z0-9가-힣]{2,}/g) || [];
+            const stopNav = new Set([
+                "기사", "뉴스", "아티클", "글", "포스트", "보여줘", "보여", "찾아줘", "찾아",
+                "어디", "있어", "있니", "관련", "대해", "이동", "스크롤", "해줘", "좀",
+                "그", "이", "저", "해당", "내용", "대시보드", "가줘", "이동해줘", "볼래", "위치로"
+            ]);
+            const searchTokens = queryTokens.filter(t => !stopNav.has(t));
+            if (searchTokens.length === 0) return { article: null, tokens: [] };
+
+            const synonymDict = {
+                "쿠버네티스": ["kubernetes", "k8s", "쿠버네티스"],
+                "k8s": ["kubernetes", "k8s", "쿠버네티스"],
+                "kubernetes": ["kubernetes", "k8s", "쿠버네티스"],
+                "도커": ["docker", "도커", "container", "컨테이너"],
+                "docker": ["docker", "도커", "container", "컨테이너"],
+                "카프카": ["kafka", "카프카"],
+                "kafka": ["kafka", "카프카"],
+                "레디스": ["redis", "레디스"],
+                "redis": ["redis", "레디스"],
+                "보안": ["security", "보안", "cve", "취약점", "침해사고", "침해", "제로트러스트"],
+                "security": ["security", "보안", "cve", "취약점", "침해사고"],
+                "클라우드": ["cloud", "클라우드", "aws", "gcp", "azure", "아키텍처"],
+                "cloud": ["cloud", "클라우드", "aws", "gcp", "azure"],
+                "인공지능": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
+                "ai": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
+                "llm": ["ai", "인공지능", "llm", "머신러닝", "에이전트", "rag"],
+                "프론트엔드": ["frontend", "프론트엔드", "웹", "web", "ui", "react", "vue", "javascript", "html", "css", "브라우저"],
+                "frontend": ["frontend", "프론트엔드", "웹", "web", "ui", "react", "vue", "javascript", "html", "css"],
+                "장애": ["장애", "복구", "outage", "failure", "incident", "침해사고", "오류", "이슈"],
+                "복구": ["장애", "복구", "recovery", "failover", "disaster", "복원"]
+            };
+
+            let matchedArticle = null;
+            let bestScore = 0;
+
+            for (const art of allArticles) {
+                const titleLower = (art.title || "").toLowerCase();
+                const summaryLower = ((art.summary || "") + " " + (art.raw_snippet || "")).toLowerCase();
+                const keywordsLower = (art.keywords || []).join(" ").toLowerCase();
+                const categoryLower = (art.category || "").toLowerCase();
+                const combined = `${titleLower} ${summaryLower} ${keywordsLower} ${categoryLower}`;
+
+                let score = 0;
+                for (const token of searchTokens) {
+                    const syns = synonymDict[token] || [token];
+                    for (const syn of syns) {
+                        if (titleLower.includes(syn)) score += 10;
+                        else if (keywordsLower.includes(syn)) score += 5;
+                        else if (categoryLower.includes(syn)) score += 4;
+                        else if (combined.includes(syn)) score += 2;
+                    }
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    matchedArticle = art;
+                }
+            }
+
+            if (matchedArticle && bestScore >= 2) {
+                return { article: matchedArticle, tokens: searchTokens };
+            }
+            return { article: null, tokens: searchTokens };
+        }
+
         function generateClientMentorReply(userMsg, ragArticles = []) {
-            const low = userMsg.toLowerCase();
+            const low = userMsg.toLowerCase().trim();
             let referencesMeta = null;
             let ragSnippetHtml = "";
             let ragUsed = false;
             let clientUiAction = null;
 
-            // 0. 내비게이션 의도 감지 (UI Action)
+            // 0. 내비게이션 의도 감지 & Pending State 처리
             const navPatterns = ["기사 보여줘", "기사 보여", "기사 찾아", "기사 어디", "기사로 이동", "보여줘", "찾아줘", "어디 있어", "이동해줘", "스크롤", "위치로"];
-            if (navPatterns.some(p => low.includes(p)) && allArticles && allArticles.length > 0) {
-                const targetArt = (ragArticles && ragArticles.length > 0) ? ragArticles[0] : allArticles[0];
+            const isNavIntent = navPatterns.some(p => low.includes(p));
+
+            // 이전 턴에 보류된 navigate_to_article이 있을 때 이어받기
+            if (!isNavIntent && clientPendingAction && clientPendingAction.type === "navigate_to_article") {
+                const { article: resumedArt, tokens: resumedTokens } = searchClientArticleForNavigation(userMsg);
+                if (resumedArt) {
+                    clientPendingAction = null;
+                    clientUiAction = {
+                        type: 'navigate_to_article',
+                        article_id: resumedArt.article_id,
+                        title: resumedArt.title,
+                        query: userMsg,
+                        category: resumedArt.category,
+                        link: resumedArt.link
+                    };
+                    return {
+                        reply: `요청하신 기사 <strong>'${resumedArt.title}'</strong>을(를) 대시보드에서 찾아 이동 및 강조 표시했습니다. 📍<br>` +
+                               `대시보드 카드에서 상세 내용과 실무 핵심 인사이트(Key Insight)를 확인하실 수 있습니다.`,
+                        model: "TechPrep AI Mentor (Agentic Navigation)",
+                        references: [{ title: resumedArt.title, link: resumedArt.link, source: resumedArt.source, insight: resumedArt.interview_insight }],
+                        rag_used: true,
+                        ui_action: clientUiAction
+                    };
+                } else if (resumedTokens.length === 0) {
+                    return {
+                        reply: "어떤 기사(키워드나 제목, 혹은 관련 기술 주제)로 이동할까요?",
+                        model: "TechPrep AI Mentor (Agentic Navigation)",
+                        references: null,
+                        rag_used: false,
+                        ui_action: null
+                    };
+                } else {
+                    clientPendingAction = null;
+                }
+            }
+
+            // 기사 이동 요청인데 키워드가 없는 경우 되묻기 및 보류
+            if (isNavIntent) {
+                const { article: targetArt, tokens: searchTokens } = searchClientArticleForNavigation(userMsg);
+                if (!targetArt && searchTokens.length === 0) {
+                    clientPendingAction = {
+                        type: "navigate_to_article",
+                        await_field: "article_query"
+                    };
+                    return {
+                        reply: "어떤 기사(키워드나 제목, 혹은 관련 기술 주제)로 이동할까요?",
+                        model: "TechPrep AI Mentor (Agentic Navigation)",
+                        references: null,
+                        rag_used: false,
+                        ui_action: null
+                    };
+                }
+
                 if (targetArt) {
+                    clientPendingAction = null;
                     clientUiAction = {
                         type: 'navigate_to_article',
                         article_id: targetArt.article_id,
@@ -2562,7 +2688,7 @@
 
             if (isUser) {
                 msgDiv.innerHTML = `
-                    <div class="bg-indigo-600 text-white rounded-2xl rounded-tr-xs p-3 shadow-xs max-w-[85%] text-xs leading-relaxed">
+                    <div class="chat-bubble-user bg-indigo-600 text-white rounded-2xl rounded-tr-xs p-3 shadow-xs max-w-[85%] text-xs leading-relaxed">
                         ${formattedText}
                     </div>
                     <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
@@ -2578,7 +2704,7 @@
                     <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                         <i class="fa-solid fa-robot text-xs"></i>
                     </div>
-                    <div class="bg-white border border-slate-200/90 rounded-2xl rounded-tl-xs p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed text-xs space-y-1">
+                    <div class="chat-bubble-model bg-white border border-slate-200/90 rounded-2xl rounded-tl-xs p-3.5 shadow-xs max-w-[85%] text-slate-800 leading-relaxed text-xs space-y-1">
                         <div>${formattedText}</div>
                         ${actionStatusHtml}
                         ${refBadgeHtml}

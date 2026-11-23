@@ -743,6 +743,10 @@ SYNONYM_DICT = {
     "인공지능": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
     "ai": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
     "llm": ["ai", "인공지능", "llm", "머신러닝", "에이전트", "rag"],
+    "프론트엔드": ["frontend", "프론트엔드", "웹", "web", "ui", "react", "vue", "javascript", "html", "css", "브라우저"],
+    "frontend": ["frontend", "프론트엔드", "웹", "web", "ui", "react", "vue", "javascript", "html", "css"],
+    "장애": ["장애", "복구", "outage", "failure", "incident", "침해사고", "오류", "이슈"],
+    "복구": ["장애", "복구", "recovery", "failover", "disaster", "복원"],
 }
 
 def load_cached_articles() -> List[Dict]:
@@ -772,27 +776,37 @@ def load_cached_articles() -> List[Dict]:
 
     return articles
 
-def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict]]:
+def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool = False) -> tuple[Optional[Dict], List[str]]:
     """
-    사용자가 특정 기사를 보여달라는 의도(UI Action)인지 감지하고 매칭된 기사 정보를 반환합니다.
+    쿼리에서 검색 키워드를 추출하여 가장 관련성 높은 기사의 UI Action 페이로드를 생성합니다.
     """
-    low = query.lower().strip()
-    nav_patterns = [
-        "기사 보여줘", "기사 보여", "기사 찾아", "기사 어디", "기사로 이동", "기사 볼래",
-        "보여줘", "찾아줘", "어디 있어", "어디있어", "어디에 있어", "이동해줘", "스크롤", "위치로",
-        "해당 기사", "그 기사", "관련 기사", "뉴스 보여", "뉴스 찾아"
-    ]
-    is_nav = any(p in low for p in nav_patterns)
-    if not is_nav:
-        return False, None
-
     articles = load_cached_articles()
     if not articles:
-        return True, None
+        return None, []
 
+    low = query.lower().strip()
     query_tokens = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]{2,}', low)]
-    stop_nav = {"기사", "뉴스", "보여줘", "보여", "찾아줘", "찾아", "어디", "있어", "있니", "관련", "대해", "이동", "스크롤", "해줘", "좀"}
+    stop_nav = {
+        "기사", "뉴스", "아티클", "글", "포스트", "보여줘", "보여", "찾아줘", "찾아",
+        "어디", "있어", "있니", "관련", "대해", "이동", "스크롤", "해줘", "좀",
+        "그", "이", "저", "해당", "내용", "대시보드", "가줘", "이동해줘", "볼래", "위치로"
+    }
     search_tokens = [t for t in query_tokens if t not in stop_nav]
+
+    if not search_tokens:
+        if fallback_to_latest_if_empty and articles:
+            matched_article = articles[0]
+            action_payload = {
+                "type": "navigate_to_article",
+                "article_id": matched_article["article_id"],
+                "title": matched_article.get("title", ""),
+                "query": query,
+                "category": matched_article.get("category", ""),
+                "link": matched_article.get("link", ""),
+                "original_index": matched_article.get("original_index", 0)
+            }
+            return action_payload, []
+        return None, []
 
     matched_article = None
     best_score = 0
@@ -805,7 +819,7 @@ def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict]]:
         combined = f"{title_lower} {summary_lower} {keywords_lower} {category_lower}"
 
         score = 0
-        for token in (search_tokens or query_tokens):
+        for token in search_tokens:
             syns = SYNONYM_DICT.get(token, [token])
             for syn in syns:
                 if syn in title_lower:
@@ -821,9 +835,7 @@ def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict]]:
             best_score = score
             matched_article = art
 
-    # 최소 유사도 만족 시 UI Action 메타데이터 생성
-    if matched_article and (best_score >= 4 or not search_tokens):
-        # 만약 search_tokens가 비어있다면 첫 번째 최신 기사 매칭
+    if matched_article and best_score >= 2:
         action_payload = {
             "type": "navigate_to_article",
             "article_id": matched_article["article_id"],
@@ -833,9 +845,28 @@ def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict]]:
             "link": matched_article.get("link", ""),
             "original_index": matched_article.get("original_index", 0)
         }
-        return True, action_payload
+        return action_payload, search_tokens
 
-    return True, None
+    # 매칭 점수가 미달이지만 키워드가 존재했을 때 첫번째 카테고리/기사 fallback 가능
+    return None, search_tokens
+
+def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict], List[str]]:
+    """
+    사용자가 기사 내비게이션(UI Action)을 원하는 의도인지 감지합니다.
+    Returns: (is_nav_request, ui_action, search_tokens)
+    """
+    low = query.lower().strip()
+    nav_patterns = [
+        "기사 보여줘", "기사 보여", "기사 찾아", "기사 어디", "기사로 이동", "기사 볼래",
+        "보여줘", "찾아줘", "어디 있어", "어디있어", "어디에 있어", "이동해줘", "스크롤", "위치로",
+        "해당 기사", "그 기사", "관련 기사", "뉴스 보여", "뉴스 찾아"
+    ]
+    is_nav = any(p in low for p in nav_patterns)
+    if not is_nav:
+        return False, None, []
+
+    action_payload, search_tokens = search_article_for_navigation(query, fallback_to_latest_if_empty=False)
+    return True, action_payload, search_tokens
 
 def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
     """
@@ -918,6 +949,7 @@ class ChatResponse(BaseModel):
     ui_action: Optional[Dict] = None
 
 class CreateRoomRequest(BaseModel):
+    room_id: Optional[str] = None
     title: Optional[str] = "새 대화"
 
 @app.get("/api/chats")
@@ -943,7 +975,7 @@ async def create_chat_room(req: CreateRoomRequest, authorization: Optional[str] 
     if sid not in session_store:
         session_store[sid] = {}
     
-    room_id = f"room-{uuid.uuid4().hex[:8]}"
+    room_id = req.room_id or f"room-{uuid.uuid4().hex[:8]}"
     now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     session_store[sid][room_id] = {
         "title": req.title or "새 대화",
@@ -1036,12 +1068,89 @@ async def chat_with_mentor(
             session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
 
     # 1. 명확한 의도 분석 (Intent Routing & Agentic Navigation)
-    is_nav_request, ui_action = detect_article_navigation_intent(user_msg)
+    current_room_data = session_store[sid][room_id]
+    pending_action = current_room_data.get("pending_action")
+    
+    is_nav_request, ui_action, search_tokens = detect_article_navigation_intent(user_msg)
+    is_resumed_nav = False
+
+    # 이전 턴에 보류된 navigate_to_article 액션이 있을 경우 이어달리기 검사
+    if not is_nav_request and pending_action and pending_action.get("type") == "navigate_to_article":
+        resumed_ui_action, resumed_tokens = search_article_for_navigation(user_msg, fallback_to_latest_if_empty=False)
+        if resumed_ui_action:
+            ui_action = resumed_ui_action
+            is_nav_request = True
+            is_resumed_nav = True
+            search_tokens = resumed_tokens
+            current_room_data["pending_action"] = None
+        else:
+            # 여전히 특정되지 않았지만 키워드를 제시한 경우 또는 다른 질문을 한 경우
+            if not resumed_tokens:
+                # 아무 키워드도 안 넣었을 때 다시 물어봄
+                current_room_data["pending_action"] = {
+                    "type": "navigate_to_article",
+                    "await_field": "article_query"
+                }
+                ask_reply = "어떤 기사(키워드나 제목, 혹은 관련 기술 주제)로 이동할까요?"
+                return ChatResponse(
+                    room_id=room_id,
+                    reply=ask_reply,
+                    model="TechPrep Agentic Navigation Engine",
+                    created_at=now_iso,
+                    referenced_articles=None,
+                    rag_used=False,
+                    route_reason="agentic_navigation_pending",
+                    ui_action=None
+                )
+            else:
+                current_room_data["pending_action"] = None
+
+    # 키워드 누락 감지 및 대기 상태(pending_action) 처리
+    if is_nav_request and not ui_action and not search_tokens:
+        current_room_data["pending_action"] = {
+            "type": "navigate_to_article",
+            "await_field": "article_query"
+        }
+        ask_reply = "어떤 기사(키워드나 제목, 혹은 관련 기술 주제)로 이동할까요?"
+        print(f"🧭 [Intent Router] message='{user_msg}' ➔ Pending navigation waiting for query.")
+
+        session_store[sid][room_id]["updated_at"] = now_iso
+        session_store[sid][room_id]["messages"].append({
+            "id": f"msg-{uuid.uuid4().hex[:6]}",
+            "role": "user",
+            "content": user_msg,
+            "created_at": now_iso
+        })
+        session_store[sid][room_id]["messages"].append({
+            "id": f"msg-{uuid.uuid4().hex[:6]}",
+            "role": "model",
+            "content": ask_reply,
+            "model": "TechPrep Agentic Navigation Engine",
+            "created_at": now_iso,
+            "referenced_articles": None,
+            "ui_action": None
+        })
+
+        return ChatResponse(
+            room_id=room_id,
+            reply=ask_reply,
+            model="TechPrep Agentic Navigation Engine",
+            created_at=now_iso,
+            referenced_articles=None,
+            rag_used=False,
+            route_reason="agentic_navigation_ask_clarification",
+            ui_action=None
+        )
+
+    # 내비게이션 완료 시 대기 상태 해제
+    if is_nav_request and ui_action:
+        current_room_data["pending_action"] = None
+
     use_rag, route_reason = determine_intent_routing(user_msg, req.context_topic)
 
     if is_nav_request:
         use_rag = True
-        route_reason = "agentic_navigation_intent"
+        route_reason = "agentic_navigation_resumed" if is_resumed_nav else "agentic_navigation_intent"
 
     print(f"🧭 [Intent Router] message='{user_msg}' ➔ use_rag={use_rag}, reason='{route_reason}', ui_action={bool(ui_action)}")
 
