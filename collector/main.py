@@ -8,7 +8,7 @@ from collector.config import FEEDS
 from collector.fetcher import RSSFetcher
 from collector.processor import InterviewInsightEngine
 from collector.sample_data import SAMPLE_INTERVIEW_SEED
-from backend.database import parse_article_datetime
+from collector.date_utils import parse_article_datetime
 
 def run_pipeline(output_paths: List[str] = None):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

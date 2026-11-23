@@ -1,10 +1,23 @@
 import os
 import sqlite3
 import datetime
-import bcrypt
-import jwt
 from contextlib import contextmanager
 from typing import Optional, Dict, Any, List
+
+# bcrypt 및 jwt 지연/안전 import (기사 수집 등 경량 환경에서 누락 시에도 안전)
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ImportError:
+    bcrypt = None
+    BCRYPT_AVAILABLE = False
+
+try:
+    import jwt
+    JWT_AVAILABLE = True
+except ImportError:
+    jwt = None
+    JWT_AVAILABLE = False
 
 # PostgreSQL 연결 지원 및 커넥션 풀링
 try:
@@ -118,11 +131,15 @@ def get_db_cursor():
             conn.close()
 
 def hash_password(password: str) -> str:
+    if not BCRYPT_AVAILABLE or bcrypt is None:
+        raise RuntimeError("bcrypt is required for password hashing but is not installed.")
     pwd_bytes = password.encode('utf-8')[:72]
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not BCRYPT_AVAILABLE or bcrypt is None:
+        return False
     try:
         pwd_bytes = plain_password.encode('utf-8')[:72]
         return bcrypt.checkpw(pwd_bytes, hashed_password.encode('utf-8'))
@@ -130,12 +147,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 def create_access_token(data: dict) -> str:
+    if not JWT_AVAILABLE or jwt is None:
+        raise RuntimeError("jwt is required for token generation but is not installed.")
     to_encode = data.copy()
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_access_token(token: str) -> Optional[dict]:
+    if not JWT_AVAILABLE or jwt is None:
+        return None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -475,6 +496,9 @@ def record_usage_log(username: Optional[str], ip: str, action: str, status: str,
     except Exception as e:
         print(f"Failed to record usage log: {e}")
 
+# 날짜 유틸리티 import (호환성을 위해 collector.date_utils에서 가져와 재노출)
+from collector.date_utils import parse_article_datetime
+
 def delete_old_articles_from_db(retention_days: int = 30) -> int:
     """PostgreSQL 및 SQLite DB의 articles 테이블에서 retention_days 초과 기사를 일괄 DELETE합니다."""
     use_pg = is_postgres()
@@ -521,30 +545,6 @@ def delete_old_articles_from_db(retention_days: int = 30) -> int:
         print(f"⚠️ DB delete_old_articles_from_db warning: {e}")
 
     return deleted_count
-
-def parse_article_datetime(val: Any) -> Optional[datetime.datetime]:
-    """다양한 날짜 포맷(RFC 2822, ISO 8601 등)을 안전하게 파싱하여 UTC datetime 객체로 반환합니다."""
-    if not val or not isinstance(val, str):
-        return None
-    val = val.strip()
-    from email.utils import parsedate_to_datetime
-    try:
-        dt = parsedate_to_datetime(val)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-        return dt
-    except Exception:
-        pass
-
-    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
-        try:
-            dt = datetime.datetime.strptime(val, fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=datetime.timezone.utc)
-            return dt
-        except Exception:
-            continue
-    return None
 
 def format_row_dict(row: Any) -> dict:
     d = dict(row)
