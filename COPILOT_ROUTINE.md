@@ -34,7 +34,10 @@
    - 🚨 **프론트엔드 에러 수집 텔레메트리**: 브라우저 JS 런타임 에러(`window.onerror`, unhandled rejection) 발생 시 `/api/audit/client-error`로 자동 전송되어 `usage_logs`에 누적되는 파이프라인 유지.
 3. **프론트엔드 정적 파일 동기화 규칙**:
    - `frontend/index.html`을 수정한 경우, 배포 루트의 `index.html`에도 동일하게 반영(`cp frontend/index.html index.html`)합니다.
-4. **검증 수행 (속도 및 리소스 최적화)**:
+4. **CrewAI 멀티 에이전트 파이프라인 무한 대기(Hang) 방지 원칙**:
+   - `crew_pipeline.py` 등 CrewAI 모듈 구동 시 원격 OTLP 전송 및 대화형 프롬프트 대기로 인한 블로킹을 원천 차단하기 위해 `CREWAI_TRACING_ENABLED=false`, `CREWAI_DISABLE_TELEMETRY=true`, `OTEL_SDK_DISABLED=true`, `CREWAI_TESTING=true`를 필수로 적용합니다.
+   - CrewAI `LLM` 설정 시 Google GenAI 클라이언트 옵션에 `retry_options=HttpRetryOptions(attempts=1)` 및 타임아웃을 명시하고, 각 Agent에 `max_iter`, `max_retry_limit`, `max_execution_time`을 엄격히 부여하여 할당량 소진(429)이나 네트워크 장애 시에도 수십 초 내에 안전한 Fallback 리포트로 즉시 전환되도록 합니다.
+5. **검증 수행 (속도 및 리소스 최적화)**:
    - **경량/국소 수정 (단순 UI, 텍스트 문구, 단일 함수 수정)**:
      - 전체 E2E 스위트를 매번 돌리지 않고, 수정한 모듈의 파이썬 단위 테스트나 해당 기능 전용 타겟 E2E 테스트(예: `pytest tests/e2e/test_auth_flow.py`)만 먼저 빠르게 실행하여 피드백 루프를 단축합니다.
    - **중요/광범위 수정 (새 기능 추가, 스키마/엔드포인트 변경, 의존성 정리, 배포 전)**:
