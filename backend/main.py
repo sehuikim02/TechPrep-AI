@@ -1093,6 +1093,7 @@ async def admin_generate_daily_report(
         "target_date": target_date,
         "total_usage_logs": date_data["total_usage_logs"],
         "total_login_logs": date_data["total_login_logs"],
+        "login_failed_count": date_data.get("login_failed_count", 0),
         "chat_calls": date_data["chat_calls"],
         "total_tokens": date_data["total_tokens"],
         "frontend_error_count": date_data["frontend_error_count"],

@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import sqlite3
 import datetime
@@ -806,7 +807,19 @@ def get_daily_ai_report(report_date: str) -> Optional[dict]:
         d = format_row_dict(row)
         if d.get("summary_meta"):
             try:
-                d["summary_meta"] = json.loads(d["summary_meta"])
+                meta = json.loads(d["summary_meta"])
+                # 과거 저장된 리포트에 login_failed_count가 누락되어 있거나 본문과 불일치할 경우 대비
+                if "login_failed_count" not in meta:
+                    content_str = d.get("content") or ""
+                    # 1) 본문에서 실패 N건 추출 시도
+                    m = re.search(r'실패[:\s]+(\d+)건', content_str)
+                    if m:
+                        meta["login_failed_count"] = int(m.group(1))
+                    else:
+                        # 2) 당일 원본 login_logs에서 집계 보정
+                        date_data = get_logs_for_date(report_date)
+                        meta["login_failed_count"] = date_data.get("login_failed_count", 0)
+                d["summary_meta"] = meta
             except Exception:
                 pass
         return d
@@ -842,12 +855,12 @@ def get_logs_for_date(target_date: str) -> dict:
         )
         usage_rows = [format_row_dict(r) for r in cursor.fetchall()]
 
-        # 2. 대상 날짜 login_logs
+        # 2. 대상 날짜 login_logs (최대 500건으로 집계 범위 확보)
         cursor.execute(
             f"""SELECT id, username, ip_address, status, failure_reason, timestamp 
                FROM login_logs 
                WHERE timestamp LIKE {ph} 
-               ORDER BY id DESC LIMIT 100""",
+               ORDER BY id DESC LIMIT 500""",
             (date_prefix,)
         )
         login_rows = [format_row_dict(r) for r in cursor.fetchall()]
@@ -858,7 +871,12 @@ def get_logs_for_date(target_date: str) -> dict:
         frontend_errors = [r for r in usage_rows if r.get("action") == "FRONTEND_ERROR"]
         cleanup_events = [r for r in usage_rows if "CLEANUP" in (r.get("action") or "")]
         blocked_events = [r for r in usage_rows if r.get("status") in ("FORBIDDEN", "BLOCKED") or "BLOCK" in (r.get("action") or "")]
-        login_failed = [r for r in login_rows if r.get("status") == "FAILED"]
+        login_failed = [
+            r for r in login_rows 
+            if str(r.get("status", "")).upper() in ("FAILED", "FAIL", "BLOCKED")
+            or "FAIL" in str(r.get("status", "")).upper()
+            or bool(r.get("failure_reason"))
+        ]
 
         return {
             "target_date": target_date,

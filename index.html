@@ -1258,13 +1258,19 @@
 
             // Metadata banner
             const meta = report.summary_meta || {};
+            let failCount = meta.login_failed_count;
+            if (failCount === undefined || failCount === null) {
+                // 과거 메타데이터 누락 시 본문 파싱 fallback
+                const match = (report.content || '').match(/실패[:\s]+(\d+)건/);
+                failCount = match ? parseInt(match[1], 10) : 0;
+            }
             if (metaBanner) {
                 metaBanner.classList.remove('hidden');
                 const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
                 setTxt('adm-meta-date', report.report_date);
                 setTxt('adm-meta-logs', (meta.total_usage_logs || 0).toLocaleString());
                 setTxt('adm-meta-logins', (meta.total_login_logs || 0).toLocaleString());
-                setTxt('adm-meta-failed', (meta.login_failed_count || 0).toLocaleString());
+                setTxt('adm-meta-failed', Number(failCount).toLocaleString());
                 setTxt('adm-meta-tokens', (meta.total_tokens || 0).toLocaleString());
                 setTxt('adm-meta-errors', ((meta.frontend_error_count || 0) + (meta.blocked_event_count || 0)).toLocaleString());
                 setTxt('adm-meta-author', report.generated_by || 'admin');
