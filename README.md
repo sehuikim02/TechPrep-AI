@@ -64,13 +64,17 @@
   - API 연동 상태(`ACTIVE`), 누적 호출 횟수, 토큰 사용량 실시간 집계.
   - 무료 티어 한도 대비 잔여량 및 소진율 게이지 바 제공.
 
-### 7. 📑 오늘의 AI 보안 & 운영 리포트 (Daily AI Audit Report)
-- **관제탑 내부 서브 뷰/탭 전환**: 관제탑 모달 헤더 상단의 `[관제 현황]` ↔ `[오늘의 AI 리포트]` 탭을 통해 세로 스크롤 과대화 없이 '다음 페이지' 형태로 화면을 깔끔하게 전환합니다.
-- **일자별 감사 데이터 종합 분석**: 선택한 날짜(`YYYY-MM-DD`, 기본값: 오늘)를 기준으로 누적 감사 로그, 로그인 성공/실패율, 프론트엔드 오류, 차단 이벤트, 토큰 소진량을 AI 수석 감사관이 종합 진단합니다.
-- **날짜별 영구 저장 & 멱등성 (UPSERT)**:
-  - `daily_ai_reports` 테이블에 날짜 단위로 마크다운 리포트와 분석 통계 메타데이터를 영구 저장합니다.
-  - 동일 날짜 재생성 시 중복 레코드 없이 최신 리포트로 갱신되며, 상단의 **저장된 날짜 알약(Pills)**을 클릭해 과거 리포트를 즉시 재조회할 수 있습니다.
-  - 네트워크 단절이나 AI API 호출 불가 시에도 내장 진단 규칙 엔진 기반 폴백 리포트가 안전하게 작동합니다.
+### 7. 📑 오늘의 AI 보안 & 운영 리포트 (CrewAI 3단계 멀티 에이전트 감사 파이프라인)
+- **CrewAI 멀티 에이전트 협업 구조 (`backend/crew_pipeline.py`)**: 단일 프롬프트 생성 방식에서 벗어나 3가지 전문 역할을 지닌 독립 에이전트 팀이 순차 협업(Sequential Process)하여 신뢰도 높은 리포트를 도출합니다:
+  1. **지표 집계·검산 에이전트 (Audit Metrics Aggregator & Verifier)**: 대상 일자의 API 로그, 로그인 시도/실패, 토큰 사용량, 클라이언트 에러/차단 건수를 교차 검산하여 상단 요약 배너와 본문 수치 간 불일치를 원천 차단.
+  2. **보안·운영 분석 에이전트 (Security & DevOps Operations Analyst)**: 인증 실패 패턴, 비정상 차단, 프론트엔드 에러 스택, 30일 경과 기사 정리 현황에서 핵심 인사이트와 잠재 리스크 도출.
+  3. **리포트 작성 에이전트 (Executive Report Writer & Synthesizer)**: 관리자 관제탑 및 마크다운 다운로드에 최적화된 경영진 브리핑 양식의 4대 표준 목차(종합 요약, 보안 분석, 시스템 안정성, 권장 조치) 한국어 마크다운 최종 리포트 작성.
+- **무한 대기(Hang) 방지 및 견고한 장애 대응 아키텍처**:
+  - CrewAI 내부 원격 텔레메트리/OTLP 전송 및 대화형 trace 프롬프트 블로킹을 원천 차단(`CREWAI_TRACING_ENABLED=false`, `CREWAI_DISABLE_TELEMETRY=true`, `OTEL_SDK_DISABLED=true`, `CREWAI_TESTING=true`).
+  - Google GenAI `HttpOptions`에 단일 요청 재시도(`HttpRetryOptions(attempts=1)`)를 적용하고 에이전트별 실행 제한(`max_iter=2`, `max_retry_limit=1`, `max_execution_time=25`)을 부여하여 외부 네트워크 지연이나 쿼터 초과(429) 시에도 무한 대기 없이 수초 내에 안전 Fallback 리포트로 즉시 전환.
+- **관제탑 내부 서브 뷰/탭 전환 & 일자별 영구 저장 (UPSERT)**:
+  - 관제탑 모달 헤더 상단의 `[관제 현황]` ↔ `[오늘의 AI 리포트]` 탭을 통해 세로 스크롤 과대화 없이 깔끔하게 화면 전환.
+  - `daily_ai_reports` 테이블에 날짜 단위로 리포트와 분석 통계 메타데이터를 영구 저장(동일 날짜 재생성 시 멱등 갱신)하며, 상단의 **저장된 날짜 알약(Pills)** 클릭으로 과거 리포트 즉시 재조회 및 `.md` 원본 다운로드 지원.
 
 ### 8. 🔖 대시보드 북마크 & 30일 기사 자동 정리 보호 연계
 - **대시보드 중심 북마크**: 별도의 마이페이지 없이 메인 대시보드 기사 카드의 북마크 버튼(★) 토글을 통해 사용자 계정별로 관심 기사를 저장 및 해제합니다.
@@ -118,7 +122,8 @@
 | 1) SQLite/Postgres DB: users, login_logs, usage_logs (클라이언트 런타임 에러 포함) 감사 추적       |
 | 2) Intent Routing: 질문 유형 분석 ➔ 스몰토크(Bypass) vs 도메인 RAG vs 기사 이동(UI Action)         |
 | 3) AI Generation: Google Gemini API (gemini-2.5-flash / gemini-3.5-flash-lite / REST Fallback)     |
-| 4) Playwright E2E & AI Failure Analysis: 자동화 테스트 및 Gemini 실패 원인 분석 파이프라인        |
+| 4) Multi-Agent Audit: CrewAI 3단계 감사 파이프라인 (지표 검산 ➔ 보안/운영 분석 ➔ 리포트 합성)      |
+| 5) Playwright E2E & AI Failure Analysis: 자동화 테스트 및 Gemini 실패 원인 분석 파이프라인        |
 +---------------------------------------------------------------------------------------------------+
 ```
 
@@ -144,7 +149,7 @@
 | `POST` | `/api/admin/articles/cleanup` | 30일 경과 기사 수동 즉시 정리 실행 (감사 로그 자동 기록) | Admin Only |
 | `GET` | `/api/admin/reports/dates` | 저장된 날짜별 AI 감사 리포트 목록 조회 | Admin Only |
 | `GET` | `/api/admin/reports/{report_date}` | 특정 일자의 AI 운영/보안 감사 리포트 조회 | Admin Only |
-| `POST` | `/api/admin/reports/generate` | 특정 일자 감사 데이터 기반 AI 감사 리포트 생성 및 저장 (UPSERT) | Admin Only |
+| `POST` | `/api/admin/reports/generate` | 특정 일자 감사 데이터 기반 **CrewAI 3단계 멀티 에이전트 감사 리포트** 생성 및 저장 (UPSERT) | Admin Only |
 | `GET` | `/api/admin/stats` | 관리자 대시보드 종합 지표, 토큰 사용량, 사용자 통계 조회 | Admin Only |
 | `POST` | `/api/admin/users/status` | 특정 사용자의 API 권한 변경 (`approved` / `blocked`) | Admin Only |
 | `POST` | `/api/admin/users/bulk-approve` | 승인 대기 회원 일괄 승인 | Admin Only |
@@ -160,8 +165,8 @@
 |---|---|
 | **Frontend** | HTML5, Tailwind CSS, FontAwesome, Pretendard CDN, Vanilla JS (Event Delegation, Global Error Telemetry) |
 | **Backend API** | Python 3.11+, FastAPI, Uvicorn, Pydantic, PyJWT, Passlib(Bcrypt), Requests |
-| **Database** | SQLite3 / PostgreSQL (users, login_logs, usage_logs) |
-| **AI / RAG** | Google Gemini (`gemini-2.5-flash`, `gemini-3.5-flash-lite`, REST Fallback), Agentic Navigation Engine |
+| **Database** | SQLite3 / PostgreSQL (users, login_logs, usage_logs, daily_ai_reports) |
+| **AI / Multi-Agent** | Google Gemini (`gemini-2.5-flash`, `gemini-3.5-flash-lite`, REST Fallback), **CrewAI (3단계 멀티 에이전트 감사 파이프라인)**, Agentic Navigation Engine |
 | **Testing / QA** | Playwright, Pytest, Pytest-Playwright, Pytest-Asyncio, Gemini AI Failure Analyzer |
 | **Automation** | GitHub Actions (`update_feed.yml`), Cron Schedule |
 | **Deployment** | GitHub Pages (프론트엔드 정적 호스팅), Render (FastAPI 백엔드 웹 서비스) |
@@ -195,7 +200,14 @@ python3 -m collector.main
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 2. Playwright E2E 테스트 및 AI 진단 리포트 실행
+### 2. CrewAI 멀티 에이전트 감사 파이프라인 단독 실행 (선택)
+```bash
+# 특정 날짜(또는 오늘) 기준으로 3단계 협업 감사 리포트 단독 생성
+python3 -u backend/crew_pipeline.py 2026-11-23
+```
+- 지표 검산, 보안·운영 분석, 비즈니스 마크다운 합성까지 3개 에이전트가 협업하며, 외부 API 쿼터 초과 시 안전 Fallback 리포트로 자동 전환됩니다.
+
+### 3. Playwright E2E 테스트 및 AI 진단 리포트 실행
 ```bash
 # 원클릭 테스트 실행 (서버 자동 가동 및 테스트 후 리포트 생성)
 bash tests/e2e/run_e2e_tests.sh
