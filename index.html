@@ -1825,30 +1825,16 @@
 
         // ==================== Agentic Navigation Engine ====================
         function avoidChatPanelObstruction(targetElem) {
+            // 사용자의 의도치 않은 패널 위치 이동(지맘대로 좌우 이동)을 방지하기 위해 
+            // 데스크톱에서의 자동 도킹 토글(dockChatPanel('toggle'))은 수행하지 않습니다.
+            // 위치 이동은 오직 사용자가 드래그하거나 도킹 토글 버튼을 직접 클릭했을 때만 수행됩니다.
             if (!targetElem) return;
             const chatPanel = document.getElementById('chat-panel');
             if (!chatPanel || chatPanel.classList.contains('hidden')) return;
 
-            // 모바일이면 챗봇 패널 자동 숨김
+            // 모바일 뷰포트(폭 768px 미만)에서 기사가 가려질 경우에만 패널 닫기 지원
             if (window.innerWidth < 768) {
                 chatPanel.classList.add('hidden');
-                return;
-            }
-
-            // 데스크톱: 타깃 카드와 챗봇 패널의 뷰포트 영역 충돌 검사
-            const cardRect = targetElem.getBoundingClientRect();
-            const panelRect = chatPanel.getBoundingClientRect();
-
-            const isOverlap = !(
-                cardRect.right < panelRect.left ||
-                cardRect.left > panelRect.right ||
-                cardRect.bottom < panelRect.top ||
-                cardRect.top > panelRect.bottom
-            );
-
-            if (isOverlap) {
-                // 카드가 챗봇에 가려져 있으면 반대편으로 도킹을 전환하여 시야를 확보
-                dockChatPanel('toggle');
             }
         }
 
