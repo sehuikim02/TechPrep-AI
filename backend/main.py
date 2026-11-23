@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import hashlib
 import json
 import os
 import random
@@ -725,13 +726,26 @@ def should_perform_rag(query: str, context_topic: Optional[str] = None) -> bool:
     use_rag, _ = determine_intent_routing(query, context_topic)
     return use_rag
 
-def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
-    """
-    내부 저장된 jobs_and_trends.json 또는 news.json에서 쿼리와 가장 연관성 높은 아티클을 검색
-    """
-    if not should_perform_rag(query):
-        return []
+SYNONYM_DICT = {
+    "쿠버네티스": ["kubernetes", "k8s", "쿠버네티스"],
+    "k8s": ["kubernetes", "k8s", "쿠버네티스"],
+    "kubernetes": ["kubernetes", "k8s", "쿠버네티스"],
+    "도커": ["docker", "도커", "container", "컨테이너"],
+    "docker": ["docker", "도커", "container", "컨테이너"],
+    "카프카": ["kafka", "카프카"],
+    "kafka": ["kafka", "카프카"],
+    "레디스": ["redis", "레디스"],
+    "redis": ["redis", "레디스"],
+    "보안": ["security", "보안", "cve", "취약점", "침해사고", "침해", "제로트러스트"],
+    "security": ["security", "보안", "cve", "취약점", "침해사고"],
+    "클라우드": ["cloud", "클라우드", "aws", "gcp", "azure", "아키텍처"],
+    "cloud": ["cloud", "클라우드", "aws", "gcp", "azure"],
+    "인공지능": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
+    "ai": ["ai", "인공지능", "llm", "머신러닝", "에이전트"],
+    "llm": ["ai", "인공지능", "llm", "머신러닝", "에이전트", "rag"],
+}
 
+def load_cached_articles() -> List[Dict]:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_files = [
         os.path.join(base_dir, "jobs_and_trends.json"),
@@ -751,6 +765,86 @@ def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
             except Exception:
                 continue
 
+    for idx, item in enumerate(articles):
+        unique_str = f"{item.get('title', '')}-{item.get('link', '')}-{idx}"
+        item["article_id"] = "art-" + hashlib.md5(unique_str.encode("utf-8")).hexdigest()[:10]
+        item["original_index"] = idx
+
+    return articles
+
+def detect_article_navigation_intent(query: str) -> tuple[bool, Optional[Dict]]:
+    """
+    사용자가 특정 기사를 보여달라는 의도(UI Action)인지 감지하고 매칭된 기사 정보를 반환합니다.
+    """
+    low = query.lower().strip()
+    nav_patterns = [
+        "기사 보여줘", "기사 보여", "기사 찾아", "기사 어디", "기사로 이동", "기사 볼래",
+        "보여줘", "찾아줘", "어디 있어", "어디있어", "어디에 있어", "이동해줘", "스크롤", "위치로",
+        "해당 기사", "그 기사", "관련 기사", "뉴스 보여", "뉴스 찾아"
+    ]
+    is_nav = any(p in low for p in nav_patterns)
+    if not is_nav:
+        return False, None
+
+    articles = load_cached_articles()
+    if not articles:
+        return True, None
+
+    query_tokens = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]{2,}', low)]
+    stop_nav = {"기사", "뉴스", "보여줘", "보여", "찾아줘", "찾아", "어디", "있어", "있니", "관련", "대해", "이동", "스크롤", "해줘", "좀"}
+    search_tokens = [t for t in query_tokens if t not in stop_nav]
+
+    matched_article = None
+    best_score = 0
+
+    for art in articles:
+        title_lower = art.get("title", "").lower()
+        summary_lower = (art.get("summary", "") or art.get("raw_snippet", "")).lower()
+        keywords_lower = " ".join(art.get("keywords", [])).lower()
+        category_lower = art.get("category", "").lower()
+        combined = f"{title_lower} {summary_lower} {keywords_lower} {category_lower}"
+
+        score = 0
+        for token in (search_tokens or query_tokens):
+            syns = SYNONYM_DICT.get(token, [token])
+            for syn in syns:
+                if syn in title_lower:
+                    score += 10
+                elif syn in keywords_lower:
+                    score += 5
+                elif syn in category_lower:
+                    score += 4
+                elif syn in combined:
+                    score += 2
+
+        if score > best_score:
+            best_score = score
+            matched_article = art
+
+    # 최소 유사도 만족 시 UI Action 메타데이터 생성
+    if matched_article and (best_score >= 4 or not search_tokens):
+        # 만약 search_tokens가 비어있다면 첫 번째 최신 기사 매칭
+        action_payload = {
+            "type": "navigate_to_article",
+            "article_id": matched_article["article_id"],
+            "title": matched_article.get("title", ""),
+            "query": query,
+            "category": matched_article.get("category", ""),
+            "link": matched_article.get("link", ""),
+            "original_index": matched_article.get("original_index", 0)
+        }
+        return True, action_payload
+
+    return True, None
+
+def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
+    """
+    내부 저장된 jobs_and_trends.json 또는 news.json에서 쿼리와 가장 연관성 높은 아티클을 검색
+    """
+    if not should_perform_rag(query):
+        return []
+
+    articles = load_cached_articles()
     if not articles:
         return []
 
@@ -759,7 +853,8 @@ def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
         "어떻게", "알려줘", "알려주세요", "대해서", "질문", "면접", "관련", "설명해줘", "답변", "요령",
         "신입", "개발자", "면접관", "어필", "가장", "좋을까", "좋을까요", "준비", "포트폴리오", "취업", "진로",
         "서울", "날씨", "오늘", "내일", "기온", "어때", "어때요", "어떡", "어떻", "무엇", "어떤", "어떤걸",
-        "모르겠", "방황", "불안", "시작", "공부", "방법", "구조", "전략", "방식", "설계", "대규모"
+        "모르겠", "방황", "불안", "시작", "공부", "방법", "구조", "전략", "방식", "설계", "대규모",
+        "보여줘", "찾아줘", "어디", "기사", "뉴스"
     }
     keywords = [k for k in query_tokens if k not in stopwords]
 
@@ -768,29 +863,31 @@ def retrieve_relevant_news(query: str, top_k: int = 2) -> List[Dict]:
 
     scored_articles = []
     for item in articles:
-        title = item.get("title", "")
-        summary = item.get("summary", "") or item.get("raw_snippet", "")
-        insight = item.get("interview_insight", "")
-        tags = " ".join(item.get("keywords", []))
+        title = item.get("title", "").lower()
+        summary = (item.get("summary", "") or item.get("raw_snippet", "")).lower()
+        insight = item.get("interview_insight", "").lower()
+        tags = " ".join(item.get("keywords", [])).lower()
 
         score = 0
         matched_kws = 0
         for kw in keywords:
+            syns = SYNONYM_DICT.get(kw, [kw])
             kw_score = 0
-            if kw in title.lower():
-                kw_score += 6
-            if kw in tags.lower():
-                kw_score += 4
-            if kw in insight.lower():
-                kw_score += 3
-            if kw in summary.lower():
-                kw_score += 1
+            for syn in syns:
+                if syn in title:
+                    kw_score += 6
+                if syn in tags:
+                    kw_score += 4
+                if syn in insight:
+                    kw_score += 3
+                if syn in summary:
+                    kw_score += 1
             if kw_score > 0:
                 matched_kws += 1
                 score += kw_score
 
-        # 최소 임계값: 핵심 키워드가 제목/태그에 명확히 부합하는 경우만 채택 (유사도 7점 이상)
-        if score >= 7 and matched_kws >= 1:
+        # 최소 임계값: 핵심 키워드가 제목/태그에 명확히 부합하는 경우 채택
+        if score >= 6 and matched_kws >= 1:
             scored_articles.append((score, item))
 
     scored_articles.sort(key=lambda x: x[0], reverse=True)
@@ -818,6 +915,7 @@ class ChatResponse(BaseModel):
     referenced_articles: Optional[List[Dict]] = None
     rag_used: bool = False
     route_reason: Optional[str] = None
+    ui_action: Optional[Dict] = None
 
 class CreateRoomRequest(BaseModel):
     title: Optional[str] = "새 대화"
@@ -937,15 +1035,39 @@ async def chat_with_mentor(
         if len(session_store[sid][room_id]["messages"]) == 0:
             session_store[sid][room_id]["title"] = user_msg[:18] + ("..." if len(user_msg) > 18 else "")
 
-    # 1. 명확한 의도 분석 (Intent Routing)
+    # 1. 명확한 의도 분석 (Intent Routing & Agentic Navigation)
+    is_nav_request, ui_action = detect_article_navigation_intent(user_msg)
     use_rag, route_reason = determine_intent_routing(user_msg, req.context_topic)
-    print(f"🧭 [Intent Router] message='{user_msg}' ➔ use_rag={use_rag}, reason='{route_reason}'")
+
+    if is_nav_request:
+        use_rag = True
+        route_reason = "agentic_navigation_intent"
+
+    print(f"🧭 [Intent Router] message='{user_msg}' ➔ use_rag={use_rag}, reason='{route_reason}', ui_action={bool(ui_action)}")
 
     retrieved_articles = []
     rag_context_snippets = []
     referenced_meta = []
 
-    if use_rag:
+    if ui_action:
+        # 내비게이션 대상 기사를 최우선 RAG Context 및 참조 기사로 주입
+        target_art = next((a for a in load_cached_articles() if a.get("article_id") == ui_action.get("article_id")), None)
+        if target_art:
+            retrieved_articles.append(target_art)
+            referenced_meta.append({
+                "title": target_art.get("title", ""),
+                "link": target_art.get("link", ""),
+                "source": target_art.get("source", ""),
+                "insight": target_art.get("interview_insight", ""),
+                "article_id": target_art.get("article_id", "")
+            })
+            rag_context_snippets.append(
+                f"- [대상 기사]: {target_art.get('title')} ({target_art.get('source', '')})\n"
+                f"  요약: {target_art.get('summary') or target_art.get('raw_snippet')}\n"
+                f"  실무 핵심 인사이트: {target_art.get('interview_insight')}"
+            )
+
+    if use_rag and not retrieved_articles:
         retrieved_articles = retrieve_relevant_news(user_msg, top_k=2)
         for art in retrieved_articles:
             title = art.get("title", "")
@@ -960,7 +1082,8 @@ async def chat_with_mentor(
                 "title": title,
                 "link": link,
                 "source": source,
-                "insight": insight
+                "insight": insight,
+                "article_id": art.get("article_id", "")
             })
 
     # 2. 프롬프트 구성 및 Gemini API 호출
@@ -992,12 +1115,19 @@ async def chat_with_mentor(
     if reply_text:
         model_name = f"Google Gemini ({used_model})" + (" + RAG" if referenced_meta else "")
     else:
-        # Gemini API 호출 자체가 실패한 경우 (하드코딩 앵무새 문구 금지, 실제 장애 명시)
-        reply_text = (
-            "⚠️ 죄송합니다. AI 모델(Gemini API) 호출 중 일시적인 네트워크 또는 할당량 오류가 발생했습니다.\n"
-            "잠시 후 다시 시도해 주시거나 관리자에게 문의해 주세요."
-        )
-        model_name = "Gemini Service Unavailable"
+        # Gemini API 호출 자체가 실패한 경우
+        if ui_action:
+            reply_text = (
+                f"요청하신 기사 **'{ui_action.get('title')}'**을(를) 대시보드에서 찾아 이동 및 강조 표시했습니다. 📍\n"
+                f"기사 전문 및 실무 핵심 인사이트(Key Insight)를 대시보드 카드에서 바로 확인하실 수 있습니다."
+            )
+            model_name = "TechPrep Agentic Navigation Engine"
+        else:
+            reply_text = (
+                "⚠️ 죄송합니다. AI 모델(Gemini API) 호출 중 일시적인 네트워크 또는 할당량 오류가 발생했습니다.\n"
+                "잠시 후 다시 시도해 주시거나 관리자에게 문의해 주세요."
+            )
+            model_name = "Gemini Service Unavailable"
         print(f"❌ [Gemini Error] All candidate models failed to generate response for message: {user_msg}")
 
     # 토큰 추정치
@@ -1011,12 +1141,12 @@ async def chat_with_mentor(
         username=username,
         ip=client_ip,
         action="CHAT_API",
-        status="SUCCESS" if used_model else "ERROR",
+        status="SUCCESS" if (used_model or ui_action) else "ERROR",
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
         model=model_name,
-        details=f"route={route_reason}, rag={bool(referenced_meta)}"
+        details=f"route={route_reason}, rag={bool(referenced_meta)}, ui_action={bool(ui_action)}"
     )
 
     # 히스토리 저장
@@ -1033,7 +1163,8 @@ async def chat_with_mentor(
         "content": reply_text,
         "model": model_name,
         "created_at": now_iso,
-        "referenced_articles": referenced_meta
+        "referenced_articles": referenced_meta,
+        "ui_action": ui_action
     })
 
     return ChatResponse(
@@ -1043,7 +1174,8 @@ async def chat_with_mentor(
         created_at=now_iso,
         referenced_articles=referenced_meta,
         rag_used=bool(referenced_meta),
-        route_reason=route_reason
+        route_reason=route_reason,
+        ui_action=ui_action
     )
 
 # --- Frontend Static Files Serving ---
