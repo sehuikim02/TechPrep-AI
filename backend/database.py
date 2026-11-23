@@ -192,6 +192,24 @@ def init_db():
                 timestamp TEXT NOT NULL
             )
             """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS articles (
+                id SERIAL PRIMARY KEY,
+                article_id TEXT UNIQUE NOT NULL,
+                title TEXT NOT NULL,
+                link TEXT UNIQUE NOT NULL,
+                source TEXT,
+                published TEXT,
+                category TEXT,
+                summary TEXT,
+                keywords TEXT,
+                interview_insight TEXT,
+                target_role TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """)
         else:
             print(f"📁 Connected to SQLite database at: {DB_PATH}")
             cursor.execute("""
@@ -232,6 +250,24 @@ def init_db():
                 status TEXT NOT NULL,
                 details TEXT,
                 timestamp TEXT NOT NULL
+            )
+            """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS articles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_id TEXT UNIQUE NOT NULL,
+                title TEXT NOT NULL,
+                link TEXT UNIQUE NOT NULL,
+                source TEXT,
+                published TEXT,
+                category TEXT,
+                summary TEXT,
+                keywords TEXT,
+                interview_insight TEXT,
+                target_role TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """)
 
@@ -438,6 +474,77 @@ def record_usage_log(username: Optional[str], ip: str, action: str, status: str,
             )
     except Exception as e:
         print(f"Failed to record usage log: {e}")
+
+def delete_old_articles_from_db(retention_days: int = 30) -> int:
+    """PostgreSQL 및 SQLite DB의 articles 테이블에서 retention_days 초과 기사를 일괄 DELETE합니다."""
+    use_pg = is_postgres()
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    cutoff_dt = now_utc - datetime.timedelta(days=retention_days)
+    cutoff_iso = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+    ph = "%s" if use_pg else "?"
+
+    deleted_count = 0
+    try:
+        with get_db_cursor() as cursor:
+            # articles 테이블 존재 여부 확인
+            if use_pg:
+                cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'articles'")
+            else:
+                cursor.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='articles'")
+            
+            if not cursor.fetchone():
+                return 0
+
+            # 1. ISO 포맷 문자열 비교를 통한 1차 삭제
+            cursor.execute(f"DELETE FROM articles WHERE created_at < {ph} OR published < {ph}", (cutoff_iso, cutoff_iso))
+            deleted_count += cursor.rowcount
+
+            # 2. RFC 2822 등 다양한 포맷으로 저장된 기사 안전 처리 (SELECT 후 파싱 및 ID 목록 삭제)
+            cursor.execute("SELECT id, article_id, published, created_at FROM articles")
+            rows = cursor.fetchall()
+            ids_to_delete = []
+            for r in rows:
+                row_dict = dict(r)
+                p_str = row_dict.get("published") or row_dict.get("created_at")
+                if not p_str:
+                    continue
+                dt = parse_article_datetime(p_str)
+                if dt is not None and dt < cutoff_dt:
+                    ids_to_delete.append(row_dict["id"])
+
+            if ids_to_delete:
+                placeholders = ", ".join([ph] * len(ids_to_delete))
+                cursor.execute(f"DELETE FROM articles WHERE id IN ({placeholders})", tuple(ids_to_delete))
+                deleted_count += len(ids_to_delete)
+
+    except Exception as e:
+        print(f"⚠️ DB delete_old_articles_from_db warning: {e}")
+
+    return deleted_count
+
+def parse_article_datetime(val: Any) -> Optional[datetime.datetime]:
+    """다양한 날짜 포맷(RFC 2822, ISO 8601 등)을 안전하게 파싱하여 UTC datetime 객체로 반환합니다."""
+    if not val or not isinstance(val, str):
+        return None
+    val = val.strip()
+    from email.utils import parsedate_to_datetime
+    try:
+        dt = parsedate_to_datetime(val)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt
+    except Exception:
+        pass
+
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y-%m-%d', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
+        try:
+            dt = datetime.datetime.strptime(val, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return dt
+        except Exception:
+            continue
+    return None
 
 def format_row_dict(row: Any) -> dict:
     d = dict(row)

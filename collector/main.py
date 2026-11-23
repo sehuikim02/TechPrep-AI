@@ -1,13 +1,14 @@
 import os
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict
 
 from collector.config import FEEDS
 from collector.fetcher import RSSFetcher
 from collector.processor import InterviewInsightEngine
 from collector.sample_data import SAMPLE_INTERVIEW_SEED
+from backend.database import parse_article_datetime
 
 def run_pipeline(output_paths: List[str] = None):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,6 +61,11 @@ def run_pipeline(output_paths: List[str] = None):
             category_counts[cat] = category_counts.get(cat, 0) + 1
 
     # 5. 기존 아카이빙 데이터가 있을 경우 필터링을 거쳐 누적(Append / Merge) 처리
+    # (단, 30일 경과 기사는 누적 시점에도 제외하여 오래된 기사 자동 소멸)
+    retention_days = int(os.environ.get("ARTICLE_RETENTION_DAYS", "30").strip())
+    now_utc = datetime.now(timezone.utc)
+    cutoff_dt = now_utc - timedelta(days=retention_days)
+
     archive_path = os.path.join(base_dir, "data", "jobs_and_trends.json")
     if os.path.exists(archive_path):
         try:
@@ -68,6 +74,12 @@ def run_pipeline(output_paths: List[str] = None):
                 old_articles = old_data.get("articles", [])
                 existing_links = {a.get("link") for a in processed_articles}
                 for old_art in old_articles:
+                    # 30일 초과 오래된 기사는 필터링 제외
+                    p_str = old_art.get("published") or old_art.get("created_at") or old_art.get("published_at")
+                    art_dt = parse_article_datetime(p_str)
+                    if art_dt is not None and art_dt < cutoff_dt:
+                        continue
+
                     # 기존 기사도 IT 관련성 검증
                     title = old_art.get("title", "")
                     desc = old_art.get("summary", "") or old_art.get("raw_snippet", "")

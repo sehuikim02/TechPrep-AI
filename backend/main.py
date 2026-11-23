@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
@@ -31,6 +31,8 @@ from backend.database import (
     get_login_logs,
     get_usage_logs,
     get_security_and_usage_stats,
+    delete_old_articles_from_db,
+    parse_article_datetime,
     DB_PATH
 )
 
@@ -254,10 +256,225 @@ async def autonomous_healing_worker():
         except Exception as e:
             record_audit("AUDIT", "ERROR", f"에이전트 내부 루프 오류: {str(e)}")
 
+# --- Article Auto-Cleanup Engine (Retention & Garbage Collection) ---
+def get_article_cleanup_config() -> tuple[bool, int]:
+    """환경변수 ARTICLE_AUTO_CLEANUP_ENABLED 및 ARTICLE_RETENTION_DAYS 값을 읽어옵니다."""
+    enabled_str = os.environ.get("ARTICLE_AUTO_CLEANUP_ENABLED", "true").strip().lower()
+    enabled = enabled_str in ("true", "1", "yes", "on")
+    try:
+        days = int(os.environ.get("ARTICLE_RETENTION_DAYS", "30").strip())
+    except ValueError:
+        days = 30
+    return enabled, days
+
+def preview_article_cleanup(retention_days: int = 30) -> dict:
+    """
+    30일(또는 지정된 retention_days) 경과 삭제 대상 기사 목록을 미리 조회합니다 (실제 삭제하지 않음).
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    now_utc = datetime.now(timezone.utc)
+    cutoff_dt = now_utc - timedelta(days=retention_days)
+    cutoff_iso = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    target_files = [
+        os.path.join(base_dir, "data", "jobs_and_trends.json"),
+        os.path.join(base_dir, "frontend", "jobs_and_trends.json"),
+        os.path.join(base_dir, "jobs_and_trends.json")
+    ]
+
+    candidates = []
+    seen_links = set()
+    total_articles = 0
+
+    for fp in target_files:
+        if os.path.exists(fp):
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                articles = data.get("articles", [])
+                total_articles = max(total_articles, len(articles))
+                for art in articles:
+                    link = art.get("link") or art.get("title")
+                    if link in seen_links:
+                        continue
+                    date_str = art.get("published") or art.get("created_at") or art.get("published_at")
+                    dt = parse_article_datetime(date_str)
+                    if dt is not None and dt < cutoff_dt:
+                        seen_links.add(link)
+                        candidates.append({
+                            "title": art.get("title", "제목 없음"),
+                            "published": date_str,
+                            "category": art.get("category", "기타"),
+                            "source": art.get("source", ""),
+                            "link": art.get("link", "")
+                        })
+            except Exception as ex:
+                print(f"⚠️ Preview failed on {fp}: {ex}")
+
+    return {
+        "retention_days": retention_days,
+        "cutoff_date": cutoff_iso,
+        "total_active_articles": total_articles,
+        "cleanup_candidate_count": len(candidates),
+        "candidates": candidates
+    }
+
+def execute_article_cleanup(retention_days: int = 30, triggered_by: str = "SYSTEM_STARTUP") -> dict:
+    """
+    30일(또는 지정된 retention_days)이 경과한 오래된 기사를
+    JSON 파일들 및 데이터베이스(Postgres / SQLite)에서 모두 삭제합니다.
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    now_utc = datetime.now(timezone.utc)
+    cutoff_dt = now_utc - timedelta(days=retention_days)
+    cutoff_iso = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # 대상 JSON 파일 목록
+    target_files = [
+        os.path.join(base_dir, "data", "jobs_and_trends.json"),
+        os.path.join(base_dir, "data", "news.json"),
+        os.path.join(base_dir, "frontend", "jobs_and_trends.json"),
+        os.path.join(base_dir, "frontend", "news.json"),
+        os.path.join(base_dir, "jobs_and_trends.json"),
+        os.path.join(base_dir, "news.json")
+    ]
+
+    total_deleted_articles = 0
+    remaining_count = 0
+    affected_files = []
+    deleted_titles_sample = []
+    seen_deleted_titles = set()
+
+    for fp in target_files:
+        if not os.path.exists(fp):
+            continue
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            articles = data.get("articles", [])
+            initial_count = len(articles)
+            kept_articles = []
+            file_deleted = 0
+
+            for art in articles:
+                date_str = art.get("published") or art.get("created_at") or art.get("published_at")
+                dt = parse_article_datetime(date_str)
+                # 날짜가 파싱되었고 30일(cutoff_dt) 이전인 경우 삭제 대상
+                if dt is not None and dt < cutoff_dt:
+                    file_deleted += 1
+                    t = art.get("title", "").strip()
+                    if t and t not in seen_deleted_titles:
+                        seen_deleted_titles.add(t)
+                        deleted_titles_sample.append(t)
+                else:
+                    # 날짜가 없거나 기준일 이내인 경우 안전하게 보존
+                    kept_articles.append(art)
+
+            if file_deleted > 0 or initial_count != len(kept_articles):
+                # 카테고리 집계 갱신
+                category_counts = {}
+                for art in kept_articles:
+                    c = art.get("category", "기타")
+                    category_counts[c] = category_counts.get(c, 0) + 1
+
+                metadata = data.get("metadata", {})
+                metadata["total_articles"] = len(kept_articles)
+                metadata["categories"] = category_counts
+                metadata["last_cleanup"] = now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+                data["metadata"] = metadata
+                data["articles"] = kept_articles
+
+                with open(fp, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+
+                affected_files.append(os.path.basename(fp))
+                if file_deleted > total_deleted_articles:
+                    total_deleted_articles = file_deleted
+            
+            remaining_count = len(kept_articles)
+
+        except Exception as file_err:
+            print(f"⚠️ Failed to cleanup JSON file {fp}: {file_err}")
+
+    # 데이터베이스(PostgreSQL / SQLite)의 articles 테이블에서도 삭제
+    db_deleted = 0
+    try:
+        db_deleted = delete_old_articles_from_db(retention_days)
+    except Exception as db_err:
+        print(f"⚠️ DB article cleanup warning: {db_err}")
+
+    # 삭제된 기사 요약 타이틀 포맷팅 (상위 3건 + 외 N건)
+    sample_summary = ""
+    if deleted_titles_sample:
+        top_titles = [f"'{t[:30]}...'" if len(t) > 30 else f"'{t}'" for t in deleted_titles_sample[:3]]
+        sample_summary = ", ".join(top_titles)
+        if len(deleted_titles_sample) > 3:
+            sample_summary += f" 외 {len(deleted_titles_sample) - 3}건"
+        sample_summary = f" [삭제기사: {sample_summary}]"
+
+    result_detail = (
+        f"기준일({cutoff_iso}) 이전 {retention_days}일 경과 기사 자동 삭제 완료: "
+        f"JSON {total_deleted_articles}건 삭제 (남은 기사: {remaining_count}건, 반영 파일: {len(affected_files)}개), "
+        f"DB {db_deleted}건 삭제{sample_summary}"
+    )
+
+    if len(result_detail) > 480:
+        result_detail = result_detail[:477] + "..."
+
+    print(f"🧹 [Article Cleanup] {result_detail}")
+
+    # 관리자 감사 로그에 기록
+    try:
+        record_usage_log(
+            username=triggered_by,
+            ip="127.0.0.1",
+            action="ARTICLE_AUTO_CLEANUP",
+            status="SUCCESS",
+            details=result_detail
+        )
+    except Exception as log_err:
+        print(f"⚠️ Failed to record cleanup usage log: {log_err}")
+
+    return {
+        "status": "success",
+        "retention_days": retention_days,
+        "cutoff_date": cutoff_iso,
+        "json_deleted_count": total_deleted_articles,
+        "db_deleted_count": db_deleted,
+        "remaining_count": remaining_count,
+        "affected_files": affected_files,
+        "deleted_titles_sample": deleted_titles_sample[:10]
+    }
+
+async def periodic_article_cleanup_worker():
+    """백그라운드에서 주기적으로(12시간마다) 30일 경과 기사를 자동 청소하는 워커 루프"""
+    while True:
+        try:
+            # 12시간 대기
+            await asyncio.sleep(43200)
+            enabled, retention_days = get_article_cleanup_config()
+            if enabled:
+                execute_article_cleanup(retention_days=retention_days, triggered_by="SYSTEM_CRON")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"⚠️ periodic_article_cleanup_worker error: {e}")
+            await asyncio.sleep(60)
+
 @app.on_event("startup")
 async def startup_event():
     init_db()
     asyncio.create_task(autonomous_healing_worker())
+
+    # 환경변수 제어 기반 30일 경과 기사 자동 정리 실행 및 백그라운드 워커 기동
+    cleanup_enabled, retention_days = get_article_cleanup_config()
+    if cleanup_enabled:
+        execute_article_cleanup(retention_days=retention_days, triggered_by="SYSTEM_STARTUP")
+        asyncio.create_task(periodic_article_cleanup_worker())
+    else:
+        print("ℹ️ [Article Cleanup] ARTICLE_AUTO_CLEANUP_ENABLED is false. Auto cleanup skipped.")
 
 
 def call_gemini_api(full_prompt: str, system_prompt: str) -> tuple[Optional[str], Optional[str], int, int, int]:
@@ -589,6 +806,28 @@ async def admin_bulk_approve_users(req: BulkApproveRequest, admin: dict = Depend
         "message": f"총 {affected}명의 가입 대기 계정이 승인(approved)되었습니다.",
         "affected_count": affected
     }
+
+class ArticleCleanupRequest(BaseModel):
+    retention_days: Optional[int] = 30
+
+@app.get("/api/admin/articles/cleanup-preview")
+async def admin_get_article_cleanup_preview(
+    retention_days: int = 30,
+    admin: dict = Depends(require_admin_user)
+):
+    """30일(또는 지정된 retention_days) 경과 삭제 대상 기사 목록 및 건수 미리보기"""
+    return preview_article_cleanup(retention_days=retention_days)
+
+@app.post("/api/admin/articles/cleanup")
+async def admin_trigger_article_cleanup(
+    req: Optional[ArticleCleanupRequest] = None,
+    admin: dict = Depends(require_admin_user),
+    request: Request = None
+):
+    days = req.retention_days if (req and req.retention_days is not None) else 30
+    client_ip = get_client_ip(request) if request else "unknown"
+    res = execute_article_cleanup(retention_days=days, triggered_by=admin["username"])
+    return res
 
 @app.get("/api/admin/stats")
 async def admin_get_stats(admin: dict = Depends(require_admin_user), request: Request = None):

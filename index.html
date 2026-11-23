@@ -1415,6 +1415,112 @@
             }
         }
 
+        // ==================== Article Retention & Cleanup Preview / Execute ====================
+        let isArticleCleanupPreviewOpen = false;
+
+        async function toggleArticleCleanupPreview() {
+            const container = document.getElementById('adm-cleanup-preview-container');
+            if (!container) return;
+            isArticleCleanupPreviewOpen = !isArticleCleanupPreviewOpen;
+
+            if (isArticleCleanupPreviewOpen) {
+                container.classList.remove('hidden');
+                await loadArticleCleanupPreview();
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        async function loadArticleCleanupPreview() {
+            const countElem = document.getElementById('adm-cleanup-count');
+            const cutoffElem = document.getElementById('adm-cleanup-cutoff');
+            const listElem = document.getElementById('adm-cleanup-candidates-list');
+            if (!listElem) return;
+
+            listElem.innerHTML = '<div class="text-center py-3 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-1 text-indigo-500"></i>30일 경과 기사 스캔 중...</div>';
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/articles/cleanup-preview?retention_days=30`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (countElem) countElem.textContent = `${data.cleanup_candidate_count || 0}건`;
+                    if (cutoffElem) cutoffElem.textContent = `(기준일: ${data.cutoff_date || '30일 이전'})`;
+
+                    const candidates = data.candidates || [];
+                    if (candidates.length === 0) {
+                        listElem.innerHTML = `
+                            <div class="text-center py-3 text-emerald-600 font-semibold text-xs flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-shield-check"></i>
+                                <span>30일 경과 삭제 대상 기사 없음 (모든 기사가 보존 기준 내에 있습니다)</span>
+                            </div>
+                        `;
+                    } else {
+                        listElem.innerHTML = `
+                            <div class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                ${candidates.map((c, idx) => `
+                                    <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-2">
+                                        <div class="truncate flex items-center gap-1.5 text-slate-800">
+                                            <span class="text-slate-400 font-mono text-[10px] w-5 shrink-0">${idx + 1}.</span>
+                                            <span class="truncate font-medium">${c.title}</span>
+                                        </div>
+                                        <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
+                                            <span class="px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-600 font-medium">${c.category || '기타'}</span>
+                                            <span class="text-rose-600 font-mono font-semibold">${c.published || '오래됨'}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                } else {
+                    listElem.innerHTML = `<div class="text-center py-3 text-rose-500 text-xs">미리보기 조회 실패 (${res.status})</div>`;
+                }
+            } catch (err) {
+                console.error('Failed to load cleanup preview:', err);
+                listElem.innerHTML = '<div class="text-center py-3 text-rose-500 text-xs">네트워크 오류로 미리보기를 불러오지 못했습니다.</div>';
+            }
+        }
+
+        async function triggerManualArticleCleanup() {
+            if (!confirm('30일이 경과한 오래된 기사를 지금 즉시 삭제(DELETE)하시겠습니까?\n삭제된 내역은 관리자 감사 로그에 기록됩니다.')) {
+                return;
+            }
+
+            const btn = document.getElementById('adm-btn-run-cleanup');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 삭제 진행 중...';
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/articles/cleanup`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ retention_days: 30 })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`30일 경과 기사 정리 완료!\n삭제 건수: ${data.json_deleted_count}건\n남은 기사: ${data.remaining_count}건`);
+                    await loadArticleCleanupPreview();
+                    await loadAllAdminData();
+                    // 메인 대시보드 기사 목록 새로고침
+                    loadPrepData();
+                } else {
+                    alert(data.detail || '기사 삭제 실행에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error('Error triggering article cleanup:', err);
+                alert('기사 삭제 요청 중 오류가 발생했습니다.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> 즉시 삭제 실행';
+                }
+            }
+        }
+
         async function loadAllAdminData() {
             const refreshIcon = document.getElementById('admin-refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
@@ -3249,6 +3355,49 @@
                             <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                                 <div id="adm-tokens-bar" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2-1. 30-Day Article Retention & Auto-Cleanup Management Card -->
+                <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-300/40 text-amber-700 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-broom text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                                    <span>30일 경과 기사 자동 삭제 및 보존 주기 관제</span>
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">Retention 30d</span>
+                                </h3>
+                                <p class="text-[11px] text-slate-500 mt-0.5">발행/수집일 기준 30일 경과 기사는 매 12시간마다 자동 영구 삭제되며, 삭제 전 대상 기사를 미리 확인하거나 즉시 실행할 수 있습니다.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="toggleArticleCleanupPreview()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-1.5 border border-slate-200">
+                                <i class="fa-solid fa-eye text-xs text-slate-500"></i>
+                                <span>삭제 대상 미리보기</span>
+                            </button>
+                            <button id="adm-btn-run-cleanup" onclick="triggerManualArticleCleanup()" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                <span>즉시 삭제 실행</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Preview Area -->
+                    <div id="adm-cleanup-preview-container" class="hidden pt-3 border-t border-slate-100 space-y-2">
+                        <div class="flex items-center justify-between text-xs text-slate-600 font-semibold">
+                            <span class="flex items-center gap-1 text-slate-700">
+                                <i class="fa-solid fa-list-check text-indigo-500"></i> 
+                                <span>30일 경과 삭제 대상 기사: <strong id="adm-cleanup-count" class="text-rose-600 font-bold">스캔 대기</strong></span>
+                                <span id="adm-cleanup-cutoff" class="text-[10px] text-slate-400 font-normal"></span>
+                            </span>
+                            <span class="text-[10px] text-slate-400">기준: published / created_at 컬럼</span>
+                        </div>
+                        <div id="adm-cleanup-candidates-list" class="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200 text-xs">
+                            <!-- Populated dynamically via loadArticleCleanupPreview() -->
                         </div>
                     </div>
                 </div>
