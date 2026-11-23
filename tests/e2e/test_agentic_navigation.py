@@ -50,6 +50,29 @@ def test_agentic_navigation_to_article(page_with_telemetry):
     # Should re-trigger highlight on card
     expect(page.locator(".article-card-item.agentic-highlight")).to_be_visible()
 
+    # 6. Verify Quick Reply candidates and panel drag/dock features
+    quick_reply_btns = page.locator(".quick-reply-btn")
+    expect(quick_reply_btns.first).to_be_visible()
+    count = quick_reply_btns.count()
+    assert count >= 2, f"Expected at least 2 quick reply buttons, got {count}"
+
+    # Click second quick reply candidate to navigate
+    quick_reply_btns.nth(1).click()
+    expect(page.locator(".article-card-item.agentic-highlight")).to_be_visible()
+
+    # Test Chat panel docking toggle button
+    dock_btn = page.locator("#btn-dock-chat")
+    expect(dock_btn).to_be_visible()
+    dock_btn.click()
+    import re
+    expect(page.locator("#chat-panel")).to_have_class(re.compile(r"left-0"))
+
+    # Test Chat panel collapse/expand button
+    collapse_btn = page.locator("#btn-collapse-chat")
+    expect(collapse_btn).to_be_visible()
+    collapse_btn.click()
+    collapse_btn.click()
+
 def test_agentic_navigation_pending_and_resumed_flow(page_with_telemetry):
     """
     [Agentic Navigation Pending & Follow-up E2E 검증]

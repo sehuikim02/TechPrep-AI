@@ -776,9 +776,10 @@ def load_cached_articles() -> List[Dict]:
 
     return articles
 
-def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool = False) -> tuple[Optional[Dict], List[str]]:
+def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool = False, top_k: int = 3) -> tuple[Optional[Dict], List[str]]:
     """
     쿼리에서 검색 키워드를 추출하여 가장 관련성 높은 기사의 UI Action 페이로드를 생성합니다.
+    복수 매칭 후보가 존재할 경우 candidates 배열에 상위 2~3개 후보를 포함합니다.
     """
     articles = load_cached_articles()
     if not articles:
@@ -803,13 +804,13 @@ def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool 
                 "query": query,
                 "category": matched_article.get("category", ""),
                 "link": matched_article.get("link", ""),
-                "original_index": matched_article.get("original_index", 0)
+                "original_index": matched_article.get("original_index", 0),
+                "candidates": []
             }
             return action_payload, []
         return None, []
 
-    matched_article = None
-    best_score = 0
+    scored_articles = []
 
     for art in articles:
         title_lower = art.get("title", "").lower()
@@ -831,11 +832,23 @@ def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool 
                 elif syn in combined:
                     score += 2
 
-        if score > best_score:
-            best_score = score
-            matched_article = art
+        if score >= 2:
+            scored_articles.append((score, art))
 
-    if matched_article and best_score >= 2:
+    scored_articles.sort(key=lambda x: x[0], reverse=True)
+
+    if scored_articles:
+        best_score, matched_article = scored_articles[0]
+        # 상위 2~3개 후보 리스트 구성
+        candidates = []
+        for s, a in scored_articles[:top_k]:
+            candidates.append({
+                "article_id": a["article_id"],
+                "title": a.get("title", ""),
+                "category": a.get("category", ""),
+                "link": a.get("link", "")
+            })
+
         action_payload = {
             "type": "navigate_to_article",
             "article_id": matched_article["article_id"],
@@ -843,7 +856,8 @@ def search_article_for_navigation(query: str, fallback_to_latest_if_empty: bool 
             "query": query,
             "category": matched_article.get("category", ""),
             "link": matched_article.get("link", ""),
-            "original_index": matched_article.get("original_index", 0)
+            "original_index": matched_article.get("original_index", 0),
+            "candidates": candidates
         }
         return action_payload, search_tokens
 
