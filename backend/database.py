@@ -1,4 +1,5 @@
 import os
+import json
 import sqlite3
 import datetime
 from contextlib import contextmanager
@@ -247,6 +248,19 @@ def init_db():
                 CONSTRAINT uq_user_article UNIQUE (user_id, article_id)
             )
             """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_ai_reports (
+                id SERIAL PRIMARY KEY,
+                report_date TEXT UNIQUE NOT NULL,
+                content TEXT NOT NULL,
+                summary_meta TEXT,
+                generated_by TEXT NOT NULL,
+                model TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """)
         else:
             print(f"📁 Connected to SQLite database at: {DB_PATH}")
             cursor.execute("""
@@ -321,6 +335,19 @@ def init_db():
                 interview_insight TEXT,
                 created_at TEXT NOT NULL,
                 UNIQUE (user_id, article_id)
+            )
+            """)
+
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_ai_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_date TEXT UNIQUE NOT NULL,
+                content TEXT NOT NULL,
+                summary_meta TEXT,
+                generated_by TEXT NOT NULL,
+                model TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """)
 
@@ -723,6 +750,129 @@ def get_usage_logs(limit: int = 100, username: Optional[str] = None) -> List[dic
             cursor.execute(f"SELECT * FROM usage_logs ORDER BY id DESC LIMIT {ph}", (limit,))
         rows = cursor.fetchall()
         return [format_row_dict(r) for r in rows]
+
+# ==================== Daily AI Reports Engine ====================
+def save_or_update_daily_ai_report(report_date: str, content: str, summary_meta: dict, generated_by: str, model: str) -> dict:
+    """
+    날짜(YYYY-MM-DD)별 AI 리포트를 저장하거나 업데이트(UPSERT)합니다.
+    동일 날짜 재생성 시 중복 레코드가 생기지 않고 최신 리포트로 갱신됩니다.
+    """
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    meta_json = json.dumps(summary_meta or {}, ensure_ascii=False)
+
+    with get_db_cursor() as cursor:
+        cursor.execute(f"SELECT id FROM daily_ai_reports WHERE report_date = {ph}", (report_date,))
+        row = cursor.fetchone()
+
+        if row:
+            cursor.execute(
+                f"""UPDATE daily_ai_reports 
+                   SET content = {ph}, summary_meta = {ph}, generated_by = {ph}, model = {ph}, updated_at = {ph} 
+                   WHERE report_date = {ph}""",
+                (content, meta_json, generated_by, model, now_iso, report_date)
+            )
+            return {
+                "action": "updated",
+                "report_date": report_date,
+                "message": f"'{report_date}' AI 리포트가 성공적으로 갱신되었습니다."
+            }
+        else:
+            cursor.execute(
+                f"""INSERT INTO daily_ai_reports 
+                   (report_date, content, summary_meta, generated_by, model, created_at, updated_at) 
+                   VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {ph}, {ph})""",
+                (report_date, content, meta_json, generated_by, model, now_iso, now_iso)
+            )
+            return {
+                "action": "created",
+                "report_date": report_date,
+                "message": f"'{report_date}' AI 리포트가 성공적으로 저장되었습니다."
+            }
+
+def get_daily_ai_report(report_date: str) -> Optional[dict]:
+    """지정된 날짜의 AI 리포트를 조회합니다."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id, report_date, content, summary_meta, generated_by, model, created_at, updated_at FROM daily_ai_reports WHERE report_date = {ph}",
+            (report_date,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        d = format_row_dict(row)
+        if d.get("summary_meta"):
+            try:
+                d["summary_meta"] = json.loads(d["summary_meta"])
+            except Exception:
+                pass
+        return d
+
+def list_daily_ai_report_dates(limit: int = 30) -> List[dict]:
+    """저장된 AI 리포트 날짜 목록(최신순)을 조회합니다."""
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id, report_date, generated_by, model, updated_at FROM daily_ai_reports ORDER BY report_date DESC LIMIT {ph}",
+            (limit,)
+        )
+        rows = cursor.fetchall()
+        return [format_row_dict(r) for r in rows]
+
+def get_logs_for_date(target_date: str) -> dict:
+    """
+    특정 날짜(YYYY-MM-DD)에 발생한 감사 로그, 로그인 기록 및 통계를 집계합니다.
+    """
+    use_pg = is_postgres()
+    ph = "%s" if use_pg else "?"
+    date_prefix = f"{target_date}%"
+
+    with get_db_cursor() as cursor:
+        # 1. 대상 날짜 usage_logs
+        cursor.execute(
+            f"""SELECT id, username, ip_address, action, prompt_tokens, completion_tokens, total_tokens, model, status, details, timestamp 
+               FROM usage_logs 
+               WHERE timestamp LIKE {ph} 
+               ORDER BY id DESC LIMIT 200""",
+            (date_prefix,)
+        )
+        usage_rows = [format_row_dict(r) for r in cursor.fetchall()]
+
+        # 2. 대상 날짜 login_logs
+        cursor.execute(
+            f"""SELECT id, username, ip_address, status, failure_reason, timestamp 
+               FROM login_logs 
+               WHERE timestamp LIKE {ph} 
+               ORDER BY id DESC LIMIT 100""",
+            (date_prefix,)
+        )
+        login_rows = [format_row_dict(r) for r in cursor.fetchall()]
+
+        # 3. 토큰 합계
+        total_tokens = sum(r.get("total_tokens") or 0 for r in usage_rows)
+        chat_calls = sum(1 for r in usage_rows if r.get("action") == "CHAT_API")
+        frontend_errors = [r for r in usage_rows if r.get("action") == "FRONTEND_ERROR"]
+        cleanup_events = [r for r in usage_rows if "CLEANUP" in (r.get("action") or "")]
+        blocked_events = [r for r in usage_rows if r.get("status") in ("FORBIDDEN", "BLOCKED") or "BLOCK" in (r.get("action") or "")]
+        login_failed = [r for r in login_rows if r.get("status") == "FAILED"]
+
+        return {
+            "target_date": target_date,
+            "total_usage_logs": len(usage_rows),
+            "total_login_logs": len(login_rows),
+            "chat_calls": chat_calls,
+            "total_tokens": total_tokens,
+            "frontend_error_count": len(frontend_errors),
+            "cleanup_event_count": len(cleanup_events),
+            "blocked_event_count": len(blocked_events),
+            "login_failed_count": len(login_failed),
+            "sample_usage_logs": usage_rows[:50],
+            "sample_login_logs": login_rows[:30]
+        }
 
 def get_security_and_usage_stats() -> dict:
     with get_db_cursor() as cursor:

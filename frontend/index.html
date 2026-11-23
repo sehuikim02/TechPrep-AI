@@ -1078,6 +1078,264 @@
             document.getElementById('admin-modal').classList.add('hidden');
         }
 
+        // ==================== Admin Dashboard Sub-views & AI Report Logic ====================
+        let currentAdminSubView = 'dashboard'; // 'dashboard' or 'report'
+        let currentReportDate = '';
+        let savedReportDatesList = [];
+
+        function switchAdminSubView(view) {
+            currentAdminSubView = view;
+            const viewDashboard = document.getElementById('adm-view-dashboard');
+            const viewReport = document.getElementById('adm-view-report');
+            const btnDash = document.getElementById('btn-subview-dashboard');
+            const btnReport = document.getElementById('btn-subview-report');
+            const headerIcon = document.getElementById('adm-header-icon');
+            const headerTitle = document.getElementById('adm-header-title');
+            const headerDesc = document.getElementById('adm-header-desc');
+
+            if (view === 'report') {
+                if (viewDashboard) viewDashboard.classList.add('hidden');
+                if (viewReport) viewReport.classList.remove('hidden');
+
+                if (btnDash) btnDash.className = 'px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-white/80 hover:text-white';
+                if (btnReport) btnReport.className = 'px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-white text-indigo-950 shadow-xs';
+
+                if (headerIcon) headerIcon.className = 'fa-solid fa-wand-magic-sparkles text-lg';
+                if (headerTitle) headerTitle.textContent = 'TechPrep-AI 보안 및 운영 AI 종합 리포트';
+                if (headerDesc) headerDesc.textContent = '일자별 감사 로그 및 토큰 현황 데이터를 분석한 AI 수석 감사관 보고서';
+
+                // 오늘 날짜 기본 세팅 및 리포트 조회
+                initDailyReportView();
+            } else {
+                if (viewDashboard) viewDashboard.classList.remove('hidden');
+                if (viewReport) viewReport.classList.add('hidden');
+
+                if (btnDash) btnDash.className = 'px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-white text-indigo-950 shadow-xs';
+                if (btnReport) btnReport.className = 'px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-white/80 hover:text-white';
+
+                if (headerIcon) headerIcon.className = 'fa-solid fa-gauge-high text-lg';
+                if (headerTitle) headerTitle.textContent = 'TechPrep-AI 보안 및 관리자 관제탑';
+                if (headerDesc) headerDesc.textContent = '회원 API 키 권한 제어, 감사 로그(Audit Logs) 및 Gemini 토큰 사용량 실시간 관제';
+            }
+        }
+
+        async function initDailyReportView() {
+            const dateInput = document.getElementById('adm-report-date-input');
+            if (!currentReportDate) {
+                // 오늘 날짜 YYYY-MM-DD
+                const today = new Date().toISOString().slice(0, 10);
+                currentReportDate = today;
+            }
+            if (dateInput) {
+                dateInput.value = currentReportDate;
+            }
+
+            // 1. 저장된 날짜 목록 불러오기
+            await loadSavedReportDates();
+
+            // 2. 현재 선택된 날짜의 리포트 조회
+            await fetchReportForDate(currentReportDate);
+        }
+
+        async function loadSavedReportDates() {
+            const container = document.getElementById('adm-saved-report-dates');
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/reports/dates`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    savedReportDatesList = data.dates || [];
+                    renderSavedReportDatesPills(savedReportDatesList);
+                }
+            } catch (err) {
+                console.warn('Failed to load saved report dates:', err);
+            }
+        }
+
+        function renderSavedReportDatesPills(dates) {
+            const container = document.getElementById('adm-saved-report-dates');
+            if (!container) return;
+
+            if (!dates || dates.length === 0) {
+                container.innerHTML = '<span class="text-slate-400 text-xs italic">저장된 과거 리포트가 없습니다.</span>';
+                return;
+            }
+
+            container.innerHTML = dates.map(d => {
+                const isSelected = (d.report_date === currentReportDate);
+                return `
+                    <button 
+                        onclick="selectReportDate('${d.report_date}')" 
+                        class="px-2.5 py-1 rounded-lg font-bold text-xs transition border flex items-center gap-1 ${
+                            isSelected 
+                                ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs' 
+                                : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border-slate-200'
+                        }"
+                    >
+                        <span>${d.report_date}</span>
+                        ${isSelected ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectReportDate(dateStr) {
+            currentReportDate = dateStr;
+            const dateInput = document.getElementById('adm-report-date-input');
+            if (dateInput) dateInput.value = dateStr;
+            renderSavedReportDatesPills(savedReportDatesList);
+            fetchReportForDate(dateStr);
+        }
+
+        function onReportDateChanged() {
+            const dateInput = document.getElementById('adm-report-date-input');
+            if (!dateInput || !dateInput.value) return;
+            selectReportDate(dateInput.value);
+        }
+
+        async function fetchReportForDate(dateStr) {
+            const emptyState = document.getElementById('adm-report-empty');
+            const bodyElem = document.getElementById('adm-report-body');
+            const metaBanner = document.getElementById('adm-report-meta-banner');
+            const loadingElem = document.getElementById('adm-report-loading');
+
+            if (emptyState) emptyState.classList.add('hidden');
+            if (bodyElem) bodyElem.innerHTML = '';
+            if (metaBanner) metaBanner.classList.add('hidden');
+            if (loadingElem) loadingElem.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/reports/${dateStr}`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success' && data.report) {
+                    renderDailyReportView(data.report);
+                } else {
+                    // 미생성 상태
+                    if (loadingElem) loadingElem.classList.add('hidden');
+                    if (emptyState) {
+                        emptyState.classList.remove('hidden');
+                        const emptyTitle = document.getElementById('adm-report-empty-title');
+                        const emptyDesc = document.getElementById('adm-report-empty-desc');
+                        if (emptyTitle) emptyTitle.textContent = `'${dateStr}'에 생성된 AI 리포트가 없습니다`;
+                        if (emptyDesc) {
+                            const summary = data.data_summary || {};
+                            emptyDesc.innerHTML = `
+                                해당 일자 활동 로그: API <strong>${summary.total_usage_logs || 0}건</strong>, 로그인 <strong>${summary.total_login_logs || 0}건</strong>, 토큰 <strong>${(summary.total_tokens || 0).toLocaleString()}</strong><br>
+                                우측 상단의 <strong>[AI 리포트 생성 및 저장]</strong> 버튼을 누르면 이 데이터를 바탕으로 리포트를 생성합니다.
+                            `;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching report:', err);
+                if (loadingElem) loadingElem.classList.add('hidden');
+                if (emptyState) emptyState.classList.remove('hidden');
+            }
+        }
+
+        function renderDailyReportView(report) {
+            const emptyState = document.getElementById('adm-report-empty');
+            const bodyElem = document.getElementById('adm-report-body');
+            const metaBanner = document.getElementById('adm-report-meta-banner');
+            const loadingElem = document.getElementById('adm-report-loading');
+
+            if (loadingElem) loadingElem.classList.add('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+
+            // Metadata banner
+            const meta = report.summary_meta || {};
+            if (metaBanner) {
+                metaBanner.classList.remove('hidden');
+                const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+                setTxt('adm-meta-date', report.report_date);
+                setTxt('adm-meta-logs', (meta.total_usage_logs || 0).toLocaleString());
+                setTxt('adm-meta-logins', (meta.total_login_logs || 0).toLocaleString());
+                setTxt('adm-meta-failed', (meta.login_failed_count || 0).toLocaleString());
+                setTxt('adm-meta-tokens', (meta.total_tokens || 0).toLocaleString());
+                setTxt('adm-meta-errors', ((meta.frontend_error_count || 0) + (meta.blocked_event_count || 0)).toLocaleString());
+                setTxt('adm-meta-author', report.generated_by || 'admin');
+                setTxt('adm-meta-model', report.model || 'Gemini');
+                setTxt('adm-meta-time', report.updated_at || report.created_at || '-');
+            }
+
+            // Render Markdown body
+            if (bodyElem) {
+                bodyElem.innerHTML = renderMarkdownToHtml(report.content || '');
+            }
+        }
+
+        async function triggerGenerateDailyReport() {
+            const dateInput = document.getElementById('adm-report-date-input');
+            const targetDate = (dateInput && dateInput.value) ? dateInput.value : (currentReportDate || new Date().toISOString().slice(0, 10));
+
+            const btn = document.getElementById('btn-generate-ai-report');
+            const btnText = document.getElementById('btn-generate-ai-report-text');
+            const loadingElem = document.getElementById('adm-report-loading');
+            const emptyState = document.getElementById('adm-report-empty');
+
+            if (btn) btn.disabled = true;
+            if (btnText) btnText.textContent = '리포트 생성 중...';
+            if (loadingElem) loadingElem.classList.remove('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/admin/reports/generate`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ target_date: targetDate })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.status === 'success' && data.report) {
+                    renderDailyReportView(data.report);
+                    // 날짜 목록 갱신
+                    await loadSavedReportDates();
+                } else {
+                    alert(data.detail || '리포트 생성에 실패했습니다.');
+                }
+            } catch (err) {
+                console.error('Error generating report:', err);
+                alert('리포트 생성 중 네트워크 오류가 발생했습니다.');
+            } finally {
+                if (btn) btn.disabled = false;
+                if (btnText) btnText.textContent = 'AI 리포트 생성 및 저장';
+                if (loadingElem) loadingElem.classList.add('hidden');
+            }
+        }
+
+        function renderMarkdownToHtml(md) {
+            if (!md) return '';
+            let html = md;
+
+            // Code blocks
+            html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-slate-900 text-slate-100 p-3.5 rounded-xl font-mono text-xs overflow-x-auto">$1</pre>');
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 text-indigo-700 font-mono px-1.5 py-0.5 rounded text-xs border border-slate-200">$1</code>');
+            // Headers
+            html = html.replace(/^#### (.*?)$/gm, '<h4 class="text-sm font-bold text-slate-800 mt-4 mb-1 flex items-center gap-1.5">$1</h4>');
+            html = html.replace(/^### (.*?)$/gm, '<h3 class="text-base font-extrabold text-slate-900 mt-5 mb-2 pb-1 border-b border-slate-200 flex items-center gap-1.5">$1</h3>');
+            html = html.replace(/^## (.*?)$/gm, '<h2 class="text-lg font-black text-indigo-950 mt-6 mb-2 flex items-center gap-1.5">$1</h2>');
+            html = html.replace(/^# (.*?)$/gm, '<h1 class="text-xl font-black text-slate-900 mt-6 mb-3">$1</h1>');
+            // Blockquotes
+            html = html.replace(/^> (.*?)$/gm, '<blockquote class="border-l-4 border-indigo-500 bg-indigo-50/60 p-2.5 rounded-r-xl text-xs text-slate-700 my-2">$1</blockquote>');
+            // Bold & Italic
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em class="italic text-slate-600">$1</em>');
+            // Unordered list items
+            html = html.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-slate-700 text-xs py-0.5">$1</li>');
+            // Numbered list items
+            html = html.replace(/^\d+\. (.*?)$/gm, '<li class="ml-4 list-decimal text-slate-700 text-xs py-0.5">$1</li>');
+            // Line breaks
+            html = html.replace(/\n\n/g, '<div class="h-2"></div>');
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
         let currentAuditTab = 'login';
         let currentAuditUserFilter = '';
         let allAuditUsersList = [];
@@ -3507,23 +3765,46 @@
     <div id="admin-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-xs transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 px-6 py-4 text-white flex items-center justify-between shrink-0">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 px-6 py-4 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-amber-300">
-                        <i class="fa-solid fa-gauge-high text-lg"></i>
+                        <i id="adm-header-icon" class="fa-solid fa-gauge-high text-lg"></i>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 class="text-base md:text-lg font-black tracking-tight text-white">TechPrep-AI 보안 및 관리자 관제탑</h2>
+                            <h2 id="adm-header-title" class="text-base md:text-lg font-black tracking-tight text-white">TechPrep-AI 보안 및 관리자 관제탑</h2>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/30 text-purple-200 border border-purple-400/30 uppercase tracking-wider">Admin Only</span>
                         </div>
-                        <p class="text-xs text-slate-300 mt-0.5">회원 API 키 권한 제어, 감사 로그(Audit Logs) 및 Gemini 토큰 사용량 실시간 관제</p>
+                        <p id="adm-header-desc" class="text-xs text-slate-300 mt-0.5">회원 API 키 권한 제어, 감사 로그(Audit Logs) 및 Gemini 토큰 사용량 실시간 관제</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-3">
+
+                <!-- Sub-view Navigation & Actions (화면 전환 / 지표 갱신 / 닫기) -->
+                <div class="flex items-center flex-wrap gap-2.5">
+                    <!-- 관제탑 내부 서브 뷰 전환 탭 (다음 페이지 형태) -->
+                    <div class="inline-flex p-1 rounded-xl bg-white/10 border border-white/20 text-xs">
+                        <button 
+                            id="btn-subview-dashboard" 
+                            onclick="switchAdminSubView('dashboard')" 
+                            class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-white text-indigo-950 shadow-xs"
+                        >
+                            <i class="fa-solid fa-chart-line text-[11px]"></i>
+                            <span>관제 현황</span>
+                        </button>
+                        <button 
+                            id="btn-subview-report" 
+                            onclick="switchAdminSubView('report')" 
+                            class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 text-white/80 hover:text-white"
+                        >
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-300 text-[11px]"></i>
+                            <span>오늘의 AI 리포트</span>
+                            <span class="text-[9px] px-1 py-0.2 bg-amber-400/30 text-amber-200 rounded font-semibold">New</span>
+                        </button>
+                    </div>
+
                     <button onclick="loadAllAdminData()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition flex items-center gap-1.5 border border-white/20">
                         <i id="admin-refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i>
-                        <span>지표 갱신</span>
+                        <span>새로고침</span>
                     </button>
                     <button onclick="closeAdminModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition">
                         <i class="fa-solid fa-xmark text-sm"></i>
@@ -3532,7 +3813,8 @@
             </div>
 
             <!-- Modal Content (Scrollable) -->
-            <div class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1 bg-slate-50/60">
+            <!-- 1. Sub-view A: 관제 현황 (KPI, 회원 관리, 감사 로그) -->
+            <div id="adm-view-dashboard" class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1 bg-slate-50/60">
                 <!-- 1. Top KPI Summary Cards -->
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs">
@@ -3783,6 +4065,99 @@
                                 <tr><td colspan="6" class="text-center py-4 text-slate-400">사용 로그를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Sub-view B: 오늘의 AI 리포트 (다음 페이지 형태 서브 뷰) -->
+            <div id="adm-view-report" class="hidden p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1 bg-slate-50/60">
+                <!-- Report Controls Bar -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-indigo-600"></i>
+                            <span>오늘의 AI 보안 & 운영 종합 리포트</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            선택된 날짜의 감사 로그(API/로그인/에러/정리 이벤트) 및 토큰 소비 데이터를 기반으로 AI 수석 감사관이 분석한 종합 운영 리포트입니다.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center flex-wrap gap-2.5">
+                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <label for="adm-report-date-input" class="text-[11px] font-bold text-slate-600 px-2 flex items-center gap-1">
+                                <i class="fa-regular fa-calendar text-indigo-600"></i>날짜:
+                            </label>
+                            <input 
+                                type="date" 
+                                id="adm-report-date-input" 
+                                onchange="onReportDateChanged()"
+                                class="bg-white text-slate-800 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            >
+                        </div>
+
+                        <button 
+                            id="btn-generate-ai-report" 
+                            onclick="triggerGenerateDailyReport()" 
+                            class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95"
+                        >
+                            <i class="fa-solid fa-bolt text-amber-300"></i>
+                            <span id="btn-generate-ai-report-text">AI 리포트 생성 및 저장</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Saved Dates Pills History -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 flex items-center gap-2 overflow-x-auto custom-scrollbar text-xs">
+                    <span class="text-slate-400 font-bold shrink-0 flex items-center gap-1 mr-1">
+                        <i class="fa-solid fa-history text-indigo-500"></i>저장된 리포트 날짜:
+                    </span>
+                    <div id="adm-saved-report-dates" class="flex items-center gap-1.5 flex-nowrap">
+                        <span class="text-slate-400 text-xs italic">저장된 리포트 목록을 불러오는 중...</span>
+                    </div>
+                </div>
+
+                <!-- Report Metadata Summary Banner -->
+                <div id="adm-report-meta-banner" class="hidden bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-4 flex-wrap text-slate-700">
+                        <span class="font-bold flex items-center gap-1 text-indigo-900">
+                            <i class="fa-solid fa-calendar-check text-indigo-600"></i>
+                            <span id="adm-meta-date">-</span>
+                        </span>
+                        <span>분석 로그: <strong id="adm-meta-logs" class="text-indigo-700">0</strong>건</span>
+                        <span>로그인 시도: <strong id="adm-meta-logins" class="text-indigo-700">0</strong>건 (실패 <span id="adm-meta-failed" class="text-rose-600 font-bold">0</span>)</span>
+                        <span>사용 토큰: <strong id="adm-meta-tokens" class="text-purple-700">0</strong></span>
+                        <span>에러/차단: <strong id="adm-meta-errors" class="text-amber-600 font-bold">0</strong>건</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 flex items-center gap-2">
+                        <span>작성자: <strong id="adm-meta-author" class="text-slate-700">admin</strong></span>
+                        <span class="border-l border-indigo-200 pl-2">모델: <strong id="adm-meta-model" class="text-indigo-600 font-mono">Gemini</strong></span>
+                        <span class="border-l border-indigo-200 pl-2">생성 시각: <span id="adm-meta-time">-</span></span>
+                    </div>
+                </div>
+
+                <!-- Report Content Area -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 relative min-h-[380px]">
+                    <div id="adm-report-loading" class="hidden absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center space-y-3 z-10 rounded-2xl">
+                        <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-600"></i>
+                        <p class="text-sm font-bold text-slate-700">AI 수석 감사관이 해당 일자의 감사 로그를 분석하여 리포트를 생성하고 있습니다...</p>
+                        <p class="text-xs text-slate-400">보안 위협, 토큰 비용, 로그인 실패 패턴 및 권고사항을 종합 정리 중입니다.</p>
+                    </div>
+
+                    <!-- Empty / Not-Found State -->
+                    <div id="adm-report-empty" class="hidden py-16 text-center space-y-3">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-400 text-2xl">
+                            <i class="fa-regular fa-file-lines"></i>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-800" id="adm-report-empty-title">생성된 AI 리포트가 없습니다</h4>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto" id="adm-report-empty-desc">
+                            우측 상단의 <strong>[AI 리포트 생성 및 저장]</strong> 버튼을 누르면 해당 날짜의 감사 로그를 분석해 새로운 리포트를 생성합니다.
+                        </p>
+                    </div>
+
+                    <!-- Actual Rendered Markdown Content -->
+                    <div id="adm-report-body" class="text-slate-800 text-xs md:text-sm leading-relaxed space-y-3">
+                        <!-- Populated dynamically with rendered markdown -->
                     </div>
                 </div>
             </div>

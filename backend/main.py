@@ -37,6 +37,10 @@ from backend.database import (
     get_user_bookmarks,
     get_user_bookmarked_article_ids,
     get_all_protected_bookmarked_keys,
+    save_or_update_daily_ai_report,
+    get_daily_ai_report,
+    list_daily_ai_report_dates,
+    get_logs_for_date,
     DB_PATH
 )
 
@@ -951,6 +955,183 @@ async def admin_get_login_logs(limit: int = 50, username: Optional[str] = None, 
 @app.get("/api/admin/logs/usage")
 async def admin_get_usage_logs(limit: int = 50, username: Optional[str] = None, admin: dict = Depends(require_admin_user)):
     return get_usage_logs(limit=limit, username=username)
+
+# --- Admin Daily AI Reports Endpoints ---
+class DailyReportGenerateRequest(BaseModel):
+    target_date: Optional[str] = None # YYYY-MM-DD (기본값: 오늘)
+
+@app.get("/api/admin/reports/dates")
+async def admin_list_report_dates(admin: dict = Depends(require_admin_user)):
+    """저장된 날짜별 AI 리포트 목록 조회"""
+    return {
+        "status": "success",
+        "dates": list_daily_ai_report_dates(limit=60)
+    }
+
+@app.get("/api/admin/reports/{report_date}")
+async def admin_get_report_by_date(report_date: str, admin: dict = Depends(require_admin_user)):
+    """특정 날짜의 기 생성된 AI 리포트 조회"""
+    report = get_daily_ai_report(report_date)
+    if not report:
+        # 아직 생성되지 않은 경우 당일 로그 집계 요약 정보만 반환
+        date_data = get_logs_for_date(report_date)
+        return {
+            "status": "not_found",
+            "report_date": report_date,
+            "data_summary": date_data,
+            "message": f"'{report_date}'에 생성 및 저장된 AI 리포트가 없습니다."
+        }
+    return {
+        "status": "success",
+        "report": report
+    }
+
+@app.post("/api/admin/reports/generate")
+async def admin_generate_daily_report(
+    req: Optional[DailyReportGenerateRequest] = None,
+    admin: dict = Depends(require_admin_user),
+    request: Request = None
+):
+    """
+    대상 날짜(기본값: 오늘) 기준으로 감사로그/로그인/에러/토큰을 종합 분석하여
+    Gemini AI 관리자 관제 리포트를 생성하고 DB에 영구 저장(동일 날짜는 최신 갱신)합니다.
+    """
+    now_utc = datetime.now(timezone.utc)
+    target_date = (req.target_date.strip() if req and req.target_date else None) or now_utc.strftime("%Y-%m-%d")
+
+    # 대상 날짜 로그 집계
+    date_data = get_logs_for_date(target_date)
+
+    # 기사 수집 통계 (전체 기사 수)
+    total_articles_count = 0
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    json_path = os.path.join(base_dir, "data", "jobs_and_trends.json")
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                total_articles_count = len(d.get("articles", []))
+        except Exception:
+            pass
+
+    # AI 프롬프트 생성
+    log_samples_text = ""
+    for idx, l in enumerate(date_data["sample_usage_logs"][:25], 1):
+        log_samples_text += f"- [{l.get('timestamp')}] {l.get('username')} | {l.get('action')} | {l.get('status')} | tokens={l.get('total_tokens')} | {l.get('details')}\n"
+
+    login_samples_text = ""
+    for idx, l in enumerate(date_data["sample_login_logs"][:15], 1):
+        login_samples_text += f"- [{l.get('timestamp')}] {l.get('username')} | {l.get('status')} | {l.get('failure_reason') or '-'}\n"
+
+    prompt_content = f"""
+당신은 'TechPrep-AI' 시스템의 수석 인프라/보안/운영 AI 감사관(Chief AI Auditor)입니다.
+아래 제공된 [{target_date}] 기준 시스템 감사 로그, 토큰 사용량, 사용자 활동, 에러 현황 데이터를 종합 분석하여 고위 관리자를 위한 마크다운 보고서를 작성해 주세요.
+
+[기준 일자]: {target_date}
+[집계 요약 데이터]:
+- 총 API/조회 로그: {date_data['total_usage_logs']}건
+- 총 로그인 시도: {date_data['total_login_logs']}건 (실패: {date_data['login_failed_count']}건)
+- AI 챗봇 호출: {date_data['chat_calls']}건 (사용 토큰: {date_data['total_tokens']:,} Tokens)
+- 프론트엔드/클라이언트 에러: {date_data['frontend_error_count']}건
+- 30일 경과 기사 정리 이벤트: {date_data['cleanup_event_count']}건
+- 권한 차단/FORBIDDEN 이벤트: {date_data['blocked_event_count']}건
+- 현재 서비스 활성 기술 기사 수: {total_articles_count}건
+
+[주요 활동/감사 로그 샘플 (상위)]:
+{log_samples_text or "해당 일자의 API 활동 로그가 없습니다."}
+
+[주요 로그인 로그 샘플 (상위)]:
+{login_samples_text or "해당 일자의 로그인 시도 로그가 없습니다."}
+
+[작성 가이드라인]:
+1. **📊 1. 오늘의 종합 운영 요약 (Executive Summary)**: 트래픽, 토큰 소비, 사용자 활동을 명료하게 3~4개 핵심 불릿 포인트로 요약.
+2. **🛡️ 2. 보안 및 인증/차단 이슈 분석**: 로그인 실패율, 연속 실패로 인한 차단 계정, 권한 없는 비정상 요청 여부 점검.
+3. **⚠️ 3. 시스템 안정성 및 에러/정리 진단**: 프론트엔드 에러 발생 여부 및 30일 경과 기사 정리 파이프라인 상태 점검.
+4. **💡 4. 관리자 권장 조치 사항 (Action Items)**: 관리자가 즉시 검토하거나 후속 조치할 실무 권고사항 2~3가지 제안.
+
+정중하고 전문적인 한국어 비즈니스 마크다운 양식으로 가독성 있게 작성해 주세요.
+""".strip()
+
+    system_instruction = (
+        "당신은 엔터프라이즈 DevOps/AI 시스템의 엄격하고 정밀한 최고 보안 및 운영 감사관입니다. "
+        "주어진 로그 팩트와 수치에 기반하여 신뢰도 높은 운영 리포트를 마크다운으로 출력하십시오."
+    )
+
+    # Gemini 호출
+    reply_text, used_model, p_tok, c_tok, t_tok = call_gemini_api(
+        full_prompt=prompt_content,
+        system_prompt=system_instruction
+    )
+
+    # 폴백 리포트 (API 키 미설정 또는 호출 실패 시 안전 처리)
+    if not reply_text:
+        used_model = "Rule-based Diagnostic Fallback"
+        reply_text = f"""### 📊 TechPrep-AI 운영 진단 리포트 ({target_date})
+
+> ℹ️ *AI 모델 일시적 호출 지연/제한으로 인해 시스템 내장 진단 엔진에 의해 생성된 요약 리포트입니다.*
+
+#### 1. 오늘의 종합 운영 요약 (Executive Summary)
+- **일자**: `{target_date}`
+- **전체 API 활동 로그**: 총 **{date_data['total_usage_logs']}건** 기록됨
+- **챗봇 AI 호출 및 토큰**: **{date_data['chat_calls']}건** 호출, 누적 **{date_data['total_tokens']:,} 토큰** 사용
+- **등록 활성 기사**: 총 **{total_articles_count}건** 유지 중
+
+#### 2. 보안 및 인증 이슈 분석
+- **로그인 시도**: 총 {date_data['total_login_logs']}건 (성공: {date_data['total_login_logs'] - date_data['login_failed_count']}건 / 실패: {date_data['login_failed_count']}건)
+- **차단 및 미승인 접근**: 총 **{date_data['blocked_event_count']}건** 탐지 및 방어 완료
+
+#### 3. 시스템 안정성 및 정리 상태
+- **프론트엔드 클라이언트 에러**: 총 **{date_data['frontend_error_count']}건** 수집됨
+- **기사 자동 정리 이벤트**: 총 **{date_data['cleanup_event_count']}건** 수행됨
+
+#### 4. 관리자 권장 조치 사항
+1. 대기(pending) 상태인 신규 가입자가 있는 경우 관제탑 회원 관리 테이블에서 일괄 승인을 진행하세요.
+2. 클라이언트 에러가 감지되었을 경우 실시간 감사 로그(FRONTEND_ERROR)의 스택 트레이스를 확인하세요.
+"""
+
+    summary_meta = {
+        "target_date": target_date,
+        "total_usage_logs": date_data["total_usage_logs"],
+        "total_login_logs": date_data["total_login_logs"],
+        "chat_calls": date_data["chat_calls"],
+        "total_tokens": date_data["total_tokens"],
+        "frontend_error_count": date_data["frontend_error_count"],
+        "blocked_event_count": date_data["blocked_event_count"],
+        "total_articles": total_articles_count,
+        "generated_at": now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+    # DB에 저장 또는 업데이트
+    save_res = save_or_update_daily_ai_report(
+        report_date=target_date,
+        content=reply_text,
+        summary_meta=summary_meta,
+        generated_by=admin["username"],
+        model=used_model or "Gemini"
+    )
+
+    client_ip = get_client_ip(request) if request else "unknown"
+    record_usage_log(
+        username=admin["username"],
+        ip=client_ip,
+        action="GENERATE_DAILY_AI_REPORT",
+        status="SUCCESS",
+        model=used_model,
+        prompt_tokens=p_tok,
+        completion_tokens=c_tok,
+        total_tokens=t_tok,
+        details=f"date={target_date}, action={save_res['action']}, logs={date_data['total_usage_logs']}"
+    )
+
+    # 저장된 리포트 최신 반환
+    saved_report = get_daily_ai_report(target_date)
+
+    return {
+        "status": "success",
+        "action": save_res["action"],
+        "message": save_res["message"],
+        "report": saved_report
+    }
 
 # --- Client Error Telemetry Collection (Front-end Error Ingestion) ---
 class ClientErrorLogRequest(BaseModel):
