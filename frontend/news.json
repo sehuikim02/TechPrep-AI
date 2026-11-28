@@ -1,14 +1,14 @@
 {
   "metadata": {
     "title": "TechPrep-AI: 개발자 취업 및 면접 대비 실시간 IT 트렌드 브리핑",
-    "last_updated": "2026-11-27 20:52:29 UTC",
-    "total_articles": 1221,
+    "last_updated": "2026-11-28 06:57:52 UTC",
+    "total_articles": 1230,
     "categories": {
-      "AI/머신러닝": 640,
-      "보안/침해사고": 174,
-      "클라우드 아키텍처": 161,
-      "IT 트렌드": 145,
-      "인프라/DevOps": 101
+      "AI/머신러닝": 645,
+      "보안/침해사고": 175,
+      "클라우드 아키텍처": 162,
+      "IT 트렌드": 146,
+      "인프라/DevOps": 102
     }
   },
   "articles": [
@@ -30,7 +30,7 @@
       "raw_snippet": "포시에스가 30년간 축적한 전자문서 소프트웨어 기술에 인공지능(AI) 에이전트를 결합해 기업 지식 자산화 시장 공략에 나선다. 단순 문서 생성·관리에서 벗어나 기업 내부 데이터를 업무에 활용할 수 있는 지식으로 전환하는 등 사업 영역을 확대한다. 포시에스는 30일 서울 양재동 엘타워에서 열리는 '디지털문서 AX 콘퍼런스 2026'에서 기조강연을 통해 전자문서와 AI 에이전트를 결합한 통합 로드맵을 최초 공개한다고 27일 밝혔다. 전자신문과 한국"
     },
     {
-      "title": "유럽 최대 SW기업 SAP, 해킹 의심 사고…깃허브 개발망타고 공격",
+      "title": "유럽 최대 SW기업 SAP, 해킹 의심 사고",
       "link": "https://www.etnews.com/20261127000347",
       "source": "전자신문 (AI·SW)",
       "published": "Fri, 27 Nov 2026 18:48:48 +0900",
@@ -1322,6 +1322,40 @@
       "raw_snippet": "정부가 도입을 추진하는 '사이버보안 차르'의 실효성을 높이려면 새로운 조직보다 기존 국가안보실에 실질적인 권한을 부여해 위상을 강화해야 한다는 제언이 나왔다. 정책 조정에 그치지 않고 보안산업 육성 전담 조직을 함께 확보해야 한다는 의견도 제기됐다. 전자신문이 한국정보보호산업협회(KISIA)·한국정보보보학회와 공동기획한 '사이버보안 패러다임 전환' 특별좌담회에서는 범정부 컨트롤타워의 권한 강화와 보안산업 육성을 위한 실행 방안이 논의됐다. 참석"
     },
     {
+      "title": "李, '亞 최대' GS 동해 AIDC 착공식 참석…“강원, AI 핵심 거점 도약”",
+      "link": "https://www.etnews.com/20261128000021",
+      "source": "전자신문 (정책·사회)",
+      "published": "Sat, 28 Nov 2026 13:33:58 +0900",
+      "category": "AI/머신러닝",
+      "summary": "이재명 대통령이 강원 동해에서 첫 삽을 뜬 GS 인공지능(AI) 데이터센터를 발판으로 강원을 AI 산업의 핵심 거점으로 키우겠다는 구상을 밝혔다. 이 대통령은 이번 투자가 관련 산업과 지역 중소기업의 성장으로 이어질 수 있도록 뒷받침하겠다고 강조했다. 이 대통령은 28일 강원도 동해시 GS AI데이터센터 착공식에서 “그동안 강원의 땀과 자원이 대한민국 산업...",
+      "keywords": [
+        "GS",
+        "AI",
+        "핵심",
+        "강원"
+      ],
+      "interview_insight": "'李, '亞 최대' GS 동해 AIDC...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "이재명 대통령이 강원 동해에서 첫 삽을 뜬 GS 인공지능(AI) 데이터센터를 발판으로 강원을 AI 산업의 핵심 거점으로 키우겠다는 구상을 밝혔다. 이 대통령은 이번 투자가 관련 산업과 지역 중소기업의 성장으로 이어질 수 있도록 뒷받침하겠다고 강조했다. 이 대통령은 28일 강원도 동해시 GS AI데이터센터 착공식에서 “그동안 강원의 땀과 자원이 대한민국 산업화의 뼈대를 이뤘다면 앞으로의 강원은 인공지능 산업을 선도하는 핵심 거점으로 새롭게 도약할"
+    },
+    {
+      "title": "[세종만사]수출 1조달러 만루홈런 친 산업부, '홈런볼' 선물",
+      "link": "https://www.etnews.com/20261127000227",
+      "source": "전자신문 (정책·사회)",
+      "published": "Sat, 28 Nov 2026 09:00:00 +0900",
+      "category": "IT 트렌드",
+      "summary": "○…수출 1조달러 만루홈런 친 산업부, '홈런볼' 선물 산업통상부가 우리나라의 수출 1조달러 달성을 기념해 수출 역군들에게 '홈런볼'을 선물할 예정. 해태제과와 협업해 만든 수출 1조달러 기념 홈런볼(과자)과 야구공이 주인공. 기술 자립의 의미를 담은 모나미 볼펜도 함께 제작. 과자 포장지는 홈런볼 마스코트 '로(Ro)'가 수출 1조달러 문구가 적힌 야구공...",
+      "keywords": [
+        "수출",
+        "1조달러",
+        "홈런볼",
+        "만루홈런"
+      ],
+      "interview_insight": "'[세종만사]수출 1조달러 만루홈런 친...'와 관련된 디지털 전환(DX) 프로젝트에서는 레거시 시스템과의 연동 안정성과 점진적 마이그레이션(Strangler Fig 패턴) 전략이 중요합니다.",
+      "target_role": "시스템 엔지니어 / IT 기획",
+      "raw_snippet": "○…수출 1조달러 만루홈런 친 산업부, '홈런볼' 선물 산업통상부가 우리나라의 수출 1조달러 달성을 기념해 수출 역군들에게 '홈런볼'을 선물할 예정. 해태제과와 협업해 만든 수출 1조달러 기념 홈런볼(과자)과 야구공이 주인공. 기술 자립의 의미를 담은 모나미 볼펜도 함께 제작. 과자 포장지는 홈런볼 마스코트 '로(Ro)'가 수출 1조달러 문구가 적힌 야구공을 쳐 내는 모습과 함께 산업부가 반도체·자동차·바이오·뷰티·선박 등 주력 품목을 캐릭터화"
+    },
+    {
       "title": "수원정보과학고, AI융합전자과  산학일체형 도제학교 취업박람회 '잡마켓' 성료…학생 꿈과 기업 미래를 잇는 맞춤형 취업 연계의 장",
       "link": "https://www.etnews.com/20261127000303",
       "source": "전자신문 (정책·사회)",
@@ -1507,6 +1541,159 @@
       "interview_insight": "'무자본 갭투기·위장 임대인 적발…국토...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
       "target_role": "AI/ML 개발자 / 데이터 엔지니어",
       "raw_snippet": "전세보증금으로 수도권 주택 55채를 사들인 무자본 갭투기부터 위장 임대인을 내세운 조직적 분양 사기까지 전세사기 의심 거래가 무더기로 적발됐다. 정부가 인공지능(AI)을 활용해 이상거래를 분석한 결과 전세사기를 포함한 위법 의심 거래는 1400건을 넘어섰다. 국토교통부는 지난해 1~12월 신고된 임대차 거래를 대상으로 전세사기 기획조사를 실시한 결과 위법 의심 거래 1457건을 적발하고 64명을 수사 의뢰했다고 26일 밝혔다. 이 가운데 전세사"
+    },
+    {
+      "title": "NEXTORM Develops Manufacturing-Specialized AI Agent to Connect Factory Data and Optimize Operations [Seoul AI Hub 2027]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002056",
+      "source": "IT조선",
+      "published": "2026-11-28 09:00:00",
+      "category": "AI/머신러닝",
+      "summary": "Company Name: NEXTORMCEO: Seongjoong KimYear of Establishment: 2019Investment Stage: N/AKey Product: STORMYIndustry: AI + Manufacturing & RoboticsTechnology: #AIAgents/Multi-AgentSystems #DataEngineer...",
+      "keywords": [
+        "AI",
+        "Manufacturing",
+        "NEXTORM",
+        "Develops"
+      ],
+      "interview_insight": "'NEXTORM Develops Man...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
+      "target_role": "AI 엔지니어 / 백엔드 개발자",
+      "raw_snippet": "Company Name: NEXTORMCEO: Seongjoong KimYear of Establishment: 2019Investment Stage: N/AKey Product: STORMYIndustry: AI + Manufacturing & RoboticsTechnology: #AIAgents/Multi-AgentSystems #DataEngineering/DataPipelines #Predictive&AnalyticalModelingKey Achievements: Public pilot deployments, enterpri"
+    },
+    {
+      "title": "DELTOID Connects Clinic Openings to Day-to-Day Operations with AI [Seoul AI Hub 2027]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002060",
+      "source": "IT조선",
+      "published": "2026-11-28 08:30:00",
+      "category": "AI/머신러닝",
+      "summary": "Company Name: DELTOIDCEO: Yoseup KimYear of Establishment: 2020Investment Stage: SeedKey Product: VORM MSOIndustry: AI + Healthcare & BioTechnology: #GenerativeAI #AIAPI/SDK #Predictive&AnalyticalMode...",
+      "keywords": [
+        "AI",
+        "to",
+        "Day",
+        "DELTOID"
+      ],
+      "interview_insight": "'DELTOID Connects Cli...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "Company Name: DELTOIDCEO: Yoseup KimYear of Establishment: 2020Investment Stage: SeedKey Product: VORM MSOIndustry: AI + Healthcare & BioTechnology: #GenerativeAI #AIAPI/SDK #Predictive&AnalyticalModelingKey Achievements: Rated “Excellent” in national R&D project evaluationsCollaboration Types: #Fun"
+    },
+    {
+      "title": "Gravylab, AI-Driven Organizational Culture and “Culture Fit” Analytics Empowering Hiring and Placement [Seoul AI Hub 2027]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002047",
+      "source": "IT조선",
+      "published": "2026-11-28 08:15:00",
+      "category": "AI/머신러닝",
+      "summary": "Gravylab uses AI to analyze organizational culture and assess how well an individual’s core values and working style align with an organization, team, and the leader. Through its GrabberHR platform, t...",
+      "keywords": [
+        "and",
+        "AI",
+        "Gravylab",
+        "Culture"
+      ],
+      "interview_insight": "'Gravylab, AI-Driven ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "Gravylab uses AI to analyze organizational culture and assess how well an individual’s core values and working style align with an organization, team, and the leader. Through its GrabberHR platform, the company supports key decisions across recruitment, placement, and performance management.Company"
+    },
+    {
+      "title": "Rexolution Automates PCBA Visual Inspection with AI [Seoul AI Hub 2027]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002061",
+      "source": "IT조선",
+      "published": "2026-11-28 08:10:32",
+      "category": "AI/머신러닝",
+      "summary": "Company Name: RexolutionCEO: Steve KimYear of Establishment: 2024Investment Stage: SeedKey Product: Vision AI-Based PCBA Visual Inspection EquipmentIndustry: AI + Manufacturing & RoboticsTechnology: #...",
+      "keywords": [
+        "AI",
+        "PCBA",
+        "Visual",
+        "Inspection"
+      ],
+      "interview_insight": "'Rexolution Automates...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "Company Name: RexolutionCEO: Steve KimYear of Establishment: 2024Investment Stage: SeedKey Product: Vision AI-Based PCBA Visual Inspection EquipmentIndustry: AI + Manufacturing & RoboticsTechnology: #Vision-LanguageModels(VLM) #ComputerVision(CV) #Robotics/AutonomousDrivingAIKey Achievements: Capita"
+    },
+    {
+      "title": "Netlox Expands Cloud Network Technology into AI Inference Infrastructure [Seoul AI Hub 2027]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002058",
+      "source": "IT조선",
+      "published": "2026-11-28 08:00:00",
+      "category": "클라우드 아키텍처",
+      "summary": "Company Name: NetloxCEO: SeokHwan KongYear of Establishment: 2020Investment Stage: Series AKey Product: LoxiLBIndustry: AI + OtherTechnology: #LargeLanguageModels(LLM) #AIModelCompression/Optimization...",
+      "keywords": [
+        "AI",
+        "Netlox",
+        "Expands",
+        "Cloud"
+      ],
+      "interview_insight": "'Netlox Expands Cloud...' 구축 시 멀티 AZ/리전 고가용성(DR) 구성과 IaC(Terraform) 모듈화를 통한 인프라 불변성(Immutability) 유지가 실무 합격 포인트입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "Company Name: NetloxCEO: SeokHwan KongYear of Establishment: 2020Investment Stage: Series AKey Product: LoxiLBIndustry: AI + OtherTechnology: #LargeLanguageModels(LLM) #AIModelCompression/Optimization #EdgeAI/On-DeviceAIKey Achievements: Selected for TIPS, capital investment secured, enterprise coll"
+    },
+    {
+      "title": "5G 6900원·OTT 반값…연말 '고정비 다이어트'",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002029",
+      "source": "IT조선",
+      "published": "2026-11-28 08:00:00",
+      "category": "AI/머신러닝",
+      "summary": "이통사와 스마트폰 제조사들이 통신요금과 콘텐츠 구독료를 낮추며 연말 고객 확보에 나섰다. 월 체감가 1만원 이하 5G 요금제를 선보이는가 하면 유튜브 프리미엄 결합 상품을 반값에, 온라인동영상서비스(OTT)를 월 2000원대에 제공한다. 일회성 제품 판매를 넘어 매달 수익을 창출할 수 있는 장기 고객 확보에 무게를 두는 모습이다.27일 통신업계에 따르면 S...",
+      "keywords": [
+        "5G",
+        "OTT",
+        "연말",
+        "고객"
+      ],
+      "interview_insight": "'5G 6900원·OTT 반값…연말 '...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "이통사와 스마트폰 제조사들이 통신요금과 콘텐츠 구독료를 낮추며 연말 고객 확보에 나섰다. 월 체감가 1만원 이하 5G 요금제를 선보이는가 하면 유튜브 프리미엄 결합 상품을 반값에, 온라인동영상서비스(OTT)를 월 2000원대에 제공한다. 일회성 제품 판매를 넘어 매달 수익을 창출할 수 있는 장기 고객 확보에 무게를 두는 모습이다.27일 통신업계에 따르면 SK텔레콤은 다음 달 2일까지 패션 플랫폼 무신사의 연중 최대 할인 행사인 '무진장 블랙프라이데이'에 참여한다. 자급제 단말 전용 통신 서비스 '에어(air)' 5G 요금제 6종을"
+    },
+    {
+      "title": "공개 취약점 연 10만건 넘었다…현장은 ‘패치·장애·보고’ 삼중고",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001961",
+      "source": "IT조선",
+      "published": "2026-11-28 07:05:29",
+      "category": "보안/침해사고",
+      "summary": "올해 공개된 보안 취약점이 사상 처음 10만건을 넘어섰다. 인공지능(AI)을 활용한 탐지 기술이 발전하면서 취약점 발견 속도가 빨라진 영향이다. 하지만 이에 대응해야 하는 보안·IT 운영 현장에서는 어려움을 호소하는 목소리가 커지고 있다. 잇따라 공개되는 취약점을 확인하고 패치를 적용하는 것만으로도 벅찬 상황에서 시스템 장애에 대비하는 한편 감독기관의 점검...",
+      "keywords": [
+        "취약점",
+        "보고",
+        "올해",
+        "공개된"
+      ],
+      "interview_insight": "'공개 취약점 연 10만건 넘었다…현장...' 취약점 대응에서는 SBOM(소프트웨어 자재명세서) 기반 취약점 전수 스캔과 mTLS 기반 제로트러스트 심층 방어가 최우선 방어선입니다.",
+      "target_role": "보안 엔지니어 / 인프라 담당자",
+      "raw_snippet": "올해 공개된 보안 취약점이 사상 처음 10만건을 넘어섰다. 인공지능(AI)을 활용한 탐지 기술이 발전하면서 취약점 발견 속도가 빨라진 영향이다. 하지만 이에 대응해야 하는 보안·IT 운영 현장에서는 어려움을 호소하는 목소리가 커지고 있다. 잇따라 공개되는 취약점을 확인하고 패치를 적용하는 것만으로도 벅찬 상황에서 시스템 장애에 대비하는 한편 감독기관의 점검과 보고 요구에도 대응해야 하기 때문이다.보안업체 블랙카이트(Black Kite)에 따르면 올해 공개된 공통 취약점 식별번호(CVE)는 이달 18일 10만9건을 기록했다. 철회된"
+    },
+    {
+      "title": "‘램마겟돈’ 덮친 스마트폰…삼성·애플·中 내년 출하 목표 줄하향",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001989",
+      "source": "IT조선",
+      "published": "2026-11-28 06:00:00",
+      "category": "AI/머신러닝",
+      "summary": "삼성전자와 애플을 비롯한 세계 스마트폰 제조사들이 2027년 출하량 목표를 일제히 낮춰 잡았다. 인공지능(AI) 인프라 투자 열풍으로 메모리 반도체 가격이 폭등하면서 원가 부담이 한계에 달한 탓이다.27일 외신 및 공급망 업계에 따르면 주요 스마트폰 제조사들은 최근 2027년 출하 계획을 확정하며 목표치를 하향 조정했다. 삼성전자는 올해 2억3200만대에서...",
+      "keywords": [
+        "스마트폰",
+        "2027년",
+        "출하",
+        "올해"
+      ],
+      "interview_insight": "'‘램마겟돈’ 덮친 스마트폰…삼성·애플...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "삼성전자와 애플을 비롯한 세계 스마트폰 제조사들이 2027년 출하량 목표를 일제히 낮춰 잡았다. 인공지능(AI) 인프라 투자 열풍으로 메모리 반도체 가격이 폭등하면서 원가 부담이 한계에 달한 탓이다.27일 외신 및 공급망 업계에 따르면 주요 스마트폰 제조사들은 최근 2027년 출하 계획을 확정하며 목표치를 하향 조정했다. 삼성전자는 올해 2억3200만대에서 2027년 2억1000만대로 9.5% 줄였고, 애플도 2억3300만대에서 2억2000만대로 5.6% 낮췄다.중저가 물량 비중이 큰 중국 기업의 감축 폭은 더 컸다. 샤오미는 올해"
+    },
+    {
+      "title": "디스코드 웹 개방에 개인정보 유출·범죄 우려 교차",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000002005",
+      "source": "IT조선",
+      "published": "2026-11-28 05:00:00",
+      "category": "인프라/DevOps",
+      "summary": "게임사와 이용자의 주요 소통 창구로 자리 잡은 음성·텍스트·영상 메신저 디스코드가 공개 서버 대화 내용을 웹페이지와 검색엔진에 노출하는 기능을 확대한다. 폐쇄형 커뮤니티 구조를 넘어 외부 이용자를 끌어들이려는 행보지만, 개인정보 침해와 범죄 악용 등 부작용을 우려하는 목소리도 나온다.디스코드는 23일(현지시각) 서비스 이용약관 및 개인정보 처리방침 개정안을...",
+      "keywords": [
+        "개인정보",
+        "범죄",
+        "공개",
+        "웹페이지와"
+      ],
+      "interview_insight": "'디스코드 웹 개방에 개인정보 유출·범...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
+      "target_role": "인프라 / SRE 엔지니어",
+      "raw_snippet": "게임사와 이용자의 주요 소통 창구로 자리 잡은 음성·텍스트·영상 메신저 디스코드가 공개 서버 대화 내용을 웹페이지와 검색엔진에 노출하는 기능을 확대한다. 폐쇄형 커뮤니티 구조를 넘어 외부 이용자를 끌어들이려는 행보지만, 개인정보 침해와 범죄 악용 등 부작용을 우려하는 목소리도 나온다.디스코드는 23일(현지시각) 서비스 이용약관 및 개인정보 처리방침 개정안을 공지하고, 12월 15일부터 공개 서버의 이용자 개별 메시지를 전용 웹페이지와 검색엔진에 순차 노출한다고 밝혔다. 앞서 디스코드는 지난 10월 27일 웹 검색 개방 계획을 발표한"
     },
     {
       "title": "블프 대목에 ‘먹통’ 다나와…해킹 복구 장기화",
@@ -1779,125 +1966,6 @@
       "interview_insight": "'QAI, IQM 양자컴 도입…아시아 ...'와 같은 대규모 트래픽 분산 환경에서는 분산 트레이싱(OpenTelemetry)과 Kafka 완충 큐를 통해 병목 구간을 빠르게 격리하는 설계가 필수적입니다.",
       "target_role": "인프라 / SRE 엔지니어",
       "raw_snippet": "큐에이아이(이하 QAI)가 핀란드 양자컴퓨터 기업 IQM 퀀텀 컴퓨터스(이하 IQM)의 54큐비트급 양자컴퓨터를 서울 데이터센터에 도입한다. IQM 양자컴퓨터의 국내 도입은 이번이 두 번째로, 민간 데이터센터에 도입되는 것은 아시아에서 처음이다. QAI는 IQM과 54큐비트 초전도 양자컴퓨터 'IQM 래디언스(Radiance) R3' 공급 계약을 체결했다고 27일 밝혔다. 공급 범위는 온프레미스 양자컴퓨팅 솔루션 일체다. 래디언스 R3 시스템과 관련 서비스가 포함된다. 온프레미스는 장비를 고객 시설에 직접 설치해 운영하는 방식이다."
-    },
-    {
-      "title": "South Korea’s Telecom Giants Target New Services With Standalone 5G",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001971",
-      "source": "IT조선",
-      "published": "2026-11-27 12:15:00",
-      "category": "AI/머신러닝",
-      "summary": "South Korea’s three major wireless carriers are moving to commercialize tailored connectivity services using standalone 5G networks, targeting crowded venues such as concert halls and sports stadiums ...",
-      "keywords": [
-        "and",
-        "South",
-        "Korea",
-        "5G"
-      ],
-      "interview_insight": "'South Korea’s Teleco...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "South Korea’s three major wireless carriers are moving to commercialize tailored connectivity services using standalone 5G networks, targeting crowded venues such as concert halls and sports stadiums before expanding into industrial applications and emergency response.The Ministry of Science and ICT"
-    },
-    {
-      "title": "삼성전자, M&A 조직 강화…AI·로봇 투자 속도",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001975",
-      "source": "IT조선",
-      "published": "2026-11-27 11:30:23",
-      "category": "IT 트렌드",
-      "summary": "삼성전자가 스마트폰과 가전 등을 담당하는 디바이스경험(DX)부문의 인수합병(M&A) 조직을 격상했다. 인공지능(AI)과 로봇, 냉난방공조(HVAC) 등 미래 성장 사업에 필요한 외부 기술 확보와 신사업 발굴에 속도를 내려는 움직임으로 풀이된다.27일 업계에 따르면 삼성전자는 후속 조직 개편을 통해 DX부문 경영지원담당 산하 코퍼레이트 디벨롭먼트그룹을 팀으로...",
-      "keywords": [
-        "조직",
-        "AI",
-        "로봇",
-        "조직을"
-      ],
-      "interview_insight": "'삼성전자, M&A 조직 강화…AI·로...'와 관련된 디지털 전환(DX) 프로젝트에서는 레거시 시스템과의 연동 안정성과 점진적 마이그레이션(Strangler Fig 패턴) 전략이 중요합니다.",
-      "target_role": "시스템 엔지니어 / IT 기획",
-      "raw_snippet": "삼성전자가 스마트폰과 가전 등을 담당하는 디바이스경험(DX)부문의 인수합병(M&A) 조직을 격상했다. 인공지능(AI)과 로봇, 냉난방공조(HVAC) 등 미래 성장 사업에 필요한 외부 기술 확보와 신사업 발굴에 속도를 내려는 움직임으로 풀이된다.27일 업계에 따르면 삼성전자는 후속 조직 개편을 통해 DX부문 경영지원담당 산하 코퍼레이트 디벨롭먼트그룹을 팀으로 격상하고 경영지원담당 직속 조직으로 재편했다.기존 조직을 이끌어 온 마띠유 아포테커 코퍼레이트 디벨롭먼트그룹장도 앞서 24일 정기 임원 인사에서 상무에서 부사장으로 승진했다. 조"
-    },
-    {
-      "title": "머스크 ‘메모리 구애’에…이재용 “뭘 더 해줄 수 있나”",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001973",
-      "source": "IT조선",
-      "published": "2026-11-27 11:26:15",
-      "category": "AI/머신러닝",
-      "summary": "인공지능(AI) 인프라 투자 확대로 메모리 반도체 품귀 현상이 심화하면서 글로벌 기업들이 물량 확보에 어려움을 겪고 있다. 일론 머스크 테슬라 최고경영자(CEO)도 이재용 삼성전자 회장에게 메모리 장기 구매계약을 제안했다가 추가 조건을 요구받은 것으로 알려졌다.월스트리트저널(WSJ)은 25일(현지시각) 미국 자산운용사 캐피털그룹의 칼 카와자 포트폴리오 매니...",
-      "keywords": [
-        "메모리",
-        "머스크",
-        "이재용",
-        "장기"
-      ],
-      "interview_insight": "'머스크 ‘메모리 구애’에…이재용 “뭘...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
-      "target_role": "MLOps / AI 서빙 엔지니어",
-      "raw_snippet": "인공지능(AI) 인프라 투자 확대로 메모리 반도체 품귀 현상이 심화하면서 글로벌 기업들이 물량 확보에 어려움을 겪고 있다. 일론 머스크 테슬라 최고경영자(CEO)도 이재용 삼성전자 회장에게 메모리 장기 구매계약을 제안했다가 추가 조건을 요구받은 것으로 알려졌다.월스트리트저널(WSJ)은 25일(현지시각) 미국 자산운용사 캐피털그룹의 칼 카와자 포트폴리오 매니저가 6월 한 콘퍼런스에서 머스크와 대화를 나눈 일화를 소개했다. 머스크가 테슬라의 메모리 확보를 위해 삼성전자에 장기 구매계약을 제안하자 이 회장은 “남들도 다 그런 제안을 하는"
-    },
-    {
-      "title": "KT, ‘산리오캐릭터즈 키즈폰’ 출시",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001967",
-      "source": "IT조선",
-      "published": "2026-11-27 11:24:44",
-      "category": "AI/머신러닝",
-      "summary": "KT가 11월 27일부터 전국 KT 매장과 공식 온라인몰 KT다이렉트샵에서 ‘산리오캐릭터즈 키즈폰’을 판매한다고 밝혔다. 출고가는 45만1000원이다.산리오캐릭터즈 키즈폰은 삼성전자 ‘갤럭시 A18 LTE’에 산리오캐릭터즈 테마를 적용한 제품이다. 6.7형 풀HD+ 슈퍼 아몰레드 디스플레이와 5000mAh 배터리를 장착했다. 메모리는 6GB, 저장용량은 1...",
-      "keywords": [
-        "산리오캐릭터즈",
-        "KT",
-        "키즈폰",
-        "기본"
-      ],
-      "interview_insight": "'KT, ‘산리오캐릭터즈 키즈폰’ 출시...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "KT가 11월 27일부터 전국 KT 매장과 공식 온라인몰 KT다이렉트샵에서 ‘산리오캐릭터즈 키즈폰’을 판매한다고 밝혔다. 출고가는 45만1000원이다.산리오캐릭터즈 키즈폰은 삼성전자 ‘갤럭시 A18 LTE’에 산리오캐릭터즈 테마를 적용한 제품이다. 6.7형 풀HD+ 슈퍼 아몰레드 디스플레이와 5000mAh 배터리를 장착했다. 메모리는 6GB, 저장용량은 128GB다. 전용 케이스와 NFC 안심밴드 등을 기본 제공한다.해당 제품은 밀리의서재와 과학동아 AiR, THE안심 앱을 기본 탑재했다. 밀리의서재는 어린이에게 적합하지 않은 콘텐"
-    },
-    {
-      "title": "유료방송 가입자 3605만명…2년째 감소",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001974",
-      "source": "IT조선",
-      "published": "2026-11-27 11:00:00",
-      "category": "AI/머신러닝",
-      "summary": "올해 상반기 국내 유료방송 가입자 수가 3605만명으로 지난해 하반기보다 10만3974명 감소했다. 국내 유료방송 가입자 수는 2024년 상반기 3638만명에서 2024년 하반기 3636만명, 2025년 상반기 3623만명, 2025년 하반기 3615만명으로 줄었다. 2년 사이 약 33만명의 가입자가 감소했다.방송미디어통신위원회(방미통위)와 한국정보통신진흥...",
-      "keywords": [
-        "가입자",
-        "유료방송",
-        "상반기",
-        "국내"
-      ],
-      "interview_insight": "'유료방송 가입자 3605만명…2년째 ...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
-      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
-      "raw_snippet": "올해 상반기 국내 유료방송 가입자 수가 3605만명으로 지난해 하반기보다 10만3974명 감소했다. 국내 유료방송 가입자 수는 2024년 상반기 3638만명에서 2024년 하반기 3636만명, 2025년 상반기 3623만명, 2025년 하반기 3615만명으로 줄었다. 2년 사이 약 33만명의 가입자가 감소했다.방송미디어통신위원회(방미통위)와 한국정보통신진흥협회(KAIT)는 27일 ‘2026년도 상반기 유료방송 가입자 수와 시장점유율’ 조사 결과를 발표했다.매체별로는 인터넷멀티미디어방송(IPTV) 가입자 수가 2163만5497명(60"
-    },
-    {
-      "title": "[개장] 코스피, 美 관세·AI 변수 방향성 탐색… 수급 부담 여전",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001977",
-      "source": "IT조선",
-      "published": "2026-11-27 09:59:41",
-      "category": "AI/머신러닝",
-      "summary": "코스피가 장 초반 보합권에서 등락을 거듭하고 있다. 미국의 추가 관세 부담 완화와 유럽 증시 강세, 최근 급락에 따른 반발 매수세에도 취약한 수급 여건과 인공지능(AI)·반도체 산업을 둘러싼 불확실성에 뚜렷한 방향성을 찾지 못하는 모습이다.27일 한국거래소에 따르면 오전 9시 44분 기준 코스피는 전날 대비 0.5% 오른 4733.15에 거래되고 있다. 이...",
-      "keywords": [
-        "관세",
-        "AI",
-        "수급",
-        "부담"
-      ],
-      "interview_insight": "'[개장] 코스피, 美 관세·AI 변수...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
-      "target_role": "MLOps / AI 서빙 엔지니어",
-      "raw_snippet": "코스피가 장 초반 보합권에서 등락을 거듭하고 있다. 미국의 추가 관세 부담 완화와 유럽 증시 강세, 최근 급락에 따른 반발 매수세에도 취약한 수급 여건과 인공지능(AI)·반도체 산업을 둘러싼 불확실성에 뚜렷한 방향성을 찾지 못하는 모습이다.27일 한국거래소에 따르면 오전 9시 44분 기준 코스피는 전날 대비 0.5% 오른 4733.15에 거래되고 있다. 이날 4728.80에 출발한 코스피는 장 초반 소폭 상승세를 이어가다 오전 9시 20분 하락 전환했고, 이후 다시 상승 전환했다. 반면 코스닥은 지속 상승세다. 같은 시각 4.2%"
-    },
-    {
-      "title": "사이버 공격의 뉴노멀, 대응 패러다임 바뀌어야 [기고]",
-      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001884",
-      "source": "IT조선",
-      "published": "2026-11-27 09:00:00",
-      "category": "클라우드 아키텍처",
-      "summary": "바야흐로 사이버 공격의 뉴노멀(New Normal) 시대다. 인공지능(AI)의 발전으로 공격에 필요한 시간과 비용은 줄고 속도와 정교함은 높아졌다.최근 열린 FISCON 2026에서 김진휘 네이버클라우드 전무가 ‘사이버 보안의 팬데믹’이라고 표현했듯이 사이버 공격은 예외적인 사고가 아니라 상시적인 위험이 됐다.사이버 범죄 조직은 취약점 탐색부터 침투, 정보...",
-      "keywords": [
-        "사이버",
-        "공격의",
-        "뉴노멀",
-        "공격"
-      ],
-      "interview_insight": "'사이버 공격의 뉴노멀, 대응 패러다임...'와 같은 인프라 운영에서는 리소스 태깅 자동화와 Spot/Graviton 인스턴스 전환을 통한 FinOps 비용 절감 및 유휴 자원 회수가 핵심 경쟁력입니다.",
-      "target_role": "Cloud Architect / DevOps",
-      "raw_snippet": "바야흐로 사이버 공격의 뉴노멀(New Normal) 시대다. 인공지능(AI)의 발전으로 공격에 필요한 시간과 비용은 줄고 속도와 정교함은 높아졌다.최근 열린 FISCON 2026에서 김진휘 네이버클라우드 전무가 ‘사이버 보안의 팬데믹’이라고 표현했듯이 사이버 공격은 예외적인 사고가 아니라 상시적인 위험이 됐다.사이버 범죄 조직은 취약점 탐색부터 침투, 정보 탈취, 금전 요구까지 역할을 분담하고 공격 도구와 서비스를 거래하는 산업 생태계를 형성했다. 이들도 최소 비용으로 최대 수익을 추구한다. 공격 비용이 낮아질수록 더 많은 기업과"
     },
     {
       "title": "[기고] AI 면접 솔루션 도입 전, 인사팀이 챙겨야 할 4가지",
@@ -5485,6 +5553,91 @@
       "interview_insight": "'Amazon and Meta repo...'와 같은 AI 에이전트 구축 시에는 Tool-use 피드백 루프의 무한 루프를 방지하는 최대 홉 수 제한과 샌드박스 실행 격리, Human-in-the-loop 검증이 필수입니다.",
       "target_role": "AI 엔지니어 / 백엔드 개발자",
       "raw_snippet": "Amazon and Meta are discussing a potential deal that would end a two-month-long blockade of Muse."
+    },
+    {
+      "title": "South Korea’s Telecom Giants Target New Services With Standalone 5G",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001971",
+      "source": "IT조선",
+      "published": "2026-11-27 12:15:00",
+      "category": "AI/머신러닝",
+      "summary": "South Korea’s three major wireless carriers are moving to commercialize tailored connectivity services using standalone 5G networks, targeting crowded venues such as concert halls and sports stadiums ...",
+      "keywords": [
+        "and",
+        "South",
+        "Korea",
+        "5G"
+      ],
+      "interview_insight": "'South Korea’s Teleco...' 도메인에서는 하이브리드 검색(BM25 + Dense) RAG 파이프라인과 Re-ranking 모델을 결합하여 환각 현상을 최소화하는 정밀 튜닝이 관건입니다.",
+      "target_role": "AI/ML 개발자 / 데이터 엔지니어",
+      "raw_snippet": "South Korea’s three major wireless carriers are moving to commercialize tailored connectivity services using standalone 5G networks, targeting crowded venues such as concert halls and sports stadiums before expanding into industrial applications and emergency response.The Ministry of Science and ICT"
+    },
+    {
+      "title": "삼성전자, M&A 조직 강화…AI·로봇 투자 속도",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001975",
+      "source": "IT조선",
+      "published": "2026-11-27 11:30:23",
+      "category": "IT 트렌드",
+      "summary": "삼성전자가 스마트폰과 가전 등을 담당하는 디바이스경험(DX)부문의 인수합병(M&A) 조직을 격상했다. 인공지능(AI)과 로봇, 냉난방공조(HVAC) 등 미래 성장 사업에 필요한 외부 기술 확보와 신사업 발굴에 속도를 내려는 움직임으로 풀이된다.27일 업계에 따르면 삼성전자는 후속 조직 개편을 통해 DX부문 경영지원담당 산하 코퍼레이트 디벨롭먼트그룹을 팀으로...",
+      "keywords": [
+        "조직",
+        "AI",
+        "로봇",
+        "조직을"
+      ],
+      "interview_insight": "'삼성전자, M&A 조직 강화…AI·로...'와 관련된 디지털 전환(DX) 프로젝트에서는 레거시 시스템과의 연동 안정성과 점진적 마이그레이션(Strangler Fig 패턴) 전략이 중요합니다.",
+      "target_role": "시스템 엔지니어 / IT 기획",
+      "raw_snippet": "삼성전자가 스마트폰과 가전 등을 담당하는 디바이스경험(DX)부문의 인수합병(M&A) 조직을 격상했다. 인공지능(AI)과 로봇, 냉난방공조(HVAC) 등 미래 성장 사업에 필요한 외부 기술 확보와 신사업 발굴에 속도를 내려는 움직임으로 풀이된다.27일 업계에 따르면 삼성전자는 후속 조직 개편을 통해 DX부문 경영지원담당 산하 코퍼레이트 디벨롭먼트그룹을 팀으로 격상하고 경영지원담당 직속 조직으로 재편했다.기존 조직을 이끌어 온 마띠유 아포테커 코퍼레이트 디벨롭먼트그룹장도 앞서 24일 정기 임원 인사에서 상무에서 부사장으로 승진했다. 조"
+    },
+    {
+      "title": "머스크 ‘메모리 구애’에…이재용 “뭘 더 해줄 수 있나”",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001973",
+      "source": "IT조선",
+      "published": "2026-11-27 11:26:15",
+      "category": "AI/머신러닝",
+      "summary": "인공지능(AI) 인프라 투자 확대로 메모리 반도체 품귀 현상이 심화하면서 글로벌 기업들이 물량 확보에 어려움을 겪고 있다. 일론 머스크 테슬라 최고경영자(CEO)도 이재용 삼성전자 회장에게 메모리 장기 구매계약을 제안했다가 추가 조건을 요구받은 것으로 알려졌다.월스트리트저널(WSJ)은 25일(현지시각) 미국 자산운용사 캐피털그룹의 칼 카와자 포트폴리오 매니...",
+      "keywords": [
+        "메모리",
+        "머스크",
+        "이재용",
+        "장기"
+      ],
+      "interview_insight": "'머스크 ‘메모리 구애’에…이재용 “뭘...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "인공지능(AI) 인프라 투자 확대로 메모리 반도체 품귀 현상이 심화하면서 글로벌 기업들이 물량 확보에 어려움을 겪고 있다. 일론 머스크 테슬라 최고경영자(CEO)도 이재용 삼성전자 회장에게 메모리 장기 구매계약을 제안했다가 추가 조건을 요구받은 것으로 알려졌다.월스트리트저널(WSJ)은 25일(현지시각) 미국 자산운용사 캐피털그룹의 칼 카와자 포트폴리오 매니저가 6월 한 콘퍼런스에서 머스크와 대화를 나눈 일화를 소개했다. 머스크가 테슬라의 메모리 확보를 위해 삼성전자에 장기 구매계약을 제안하자 이 회장은 “남들도 다 그런 제안을 하는"
+    },
+    {
+      "title": "[개장] 코스피, 美 관세·AI 변수 방향성 탐색… 수급 부담 여전",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001977",
+      "source": "IT조선",
+      "published": "2026-11-27 09:59:41",
+      "category": "AI/머신러닝",
+      "summary": "코스피가 장 초반 보합권에서 등락을 거듭하고 있다. 미국의 추가 관세 부담 완화와 유럽 증시 강세, 최근 급락에 따른 반발 매수세에도 취약한 수급 여건과 인공지능(AI)·반도체 산업을 둘러싼 불확실성에 뚜렷한 방향성을 찾지 못하는 모습이다.27일 한국거래소에 따르면 오전 9시 44분 기준 코스피는 전날 대비 0.5% 오른 4733.15에 거래되고 있다. 이...",
+      "keywords": [
+        "관세",
+        "AI",
+        "수급",
+        "부담"
+      ],
+      "interview_insight": "'[개장] 코스피, 美 관세·AI 변수...' 환경에서는 vLLM PagedAttention 메모리 최적화와 FP8/INT4 양자화를 통해 GPU 서빙 비용을 절감하고 Throughput을 극대화하는 엔지니어링이 핵심입니다.",
+      "target_role": "MLOps / AI 서빙 엔지니어",
+      "raw_snippet": "코스피가 장 초반 보합권에서 등락을 거듭하고 있다. 미국의 추가 관세 부담 완화와 유럽 증시 강세, 최근 급락에 따른 반발 매수세에도 취약한 수급 여건과 인공지능(AI)·반도체 산업을 둘러싼 불확실성에 뚜렷한 방향성을 찾지 못하는 모습이다.27일 한국거래소에 따르면 오전 9시 44분 기준 코스피는 전날 대비 0.5% 오른 4733.15에 거래되고 있다. 이날 4728.80에 출발한 코스피는 장 초반 소폭 상승세를 이어가다 오전 9시 20분 하락 전환했고, 이후 다시 상승 전환했다. 반면 코스닥은 지속 상승세다. 같은 시각 4.2%"
+    },
+    {
+      "title": "사이버 공격의 뉴노멀, 대응 패러다임 바뀌어야 [기고]",
+      "link": "https://it.chosun.com/news/articleView.html?idxno=3000000001884",
+      "source": "IT조선",
+      "published": "2026-11-27 09:00:00",
+      "category": "클라우드 아키텍처",
+      "summary": "바야흐로 사이버 공격의 뉴노멀(New Normal) 시대다. 인공지능(AI)의 발전으로 공격에 필요한 시간과 비용은 줄고 속도와 정교함은 높아졌다.최근 열린 FISCON 2026에서 김진휘 네이버클라우드 전무가 ‘사이버 보안의 팬데믹’이라고 표현했듯이 사이버 공격은 예외적인 사고가 아니라 상시적인 위험이 됐다.사이버 범죄 조직은 취약점 탐색부터 침투, 정보...",
+      "keywords": [
+        "사이버",
+        "공격의",
+        "뉴노멀",
+        "공격"
+      ],
+      "interview_insight": "'사이버 공격의 뉴노멀, 대응 패러다임...'와 같은 인프라 운영에서는 리소스 태깅 자동화와 Spot/Graviton 인스턴스 전환을 통한 FinOps 비용 절감 및 유휴 자원 회수가 핵심 경쟁력입니다.",
+      "target_role": "Cloud Architect / DevOps",
+      "raw_snippet": "바야흐로 사이버 공격의 뉴노멀(New Normal) 시대다. 인공지능(AI)의 발전으로 공격에 필요한 시간과 비용은 줄고 속도와 정교함은 높아졌다.최근 열린 FISCON 2026에서 김진휘 네이버클라우드 전무가 ‘사이버 보안의 팬데믹’이라고 표현했듯이 사이버 공격은 예외적인 사고가 아니라 상시적인 위험이 됐다.사이버 범죄 조직은 취약점 탐색부터 침투, 정보 탈취, 금전 요구까지 역할을 분담하고 공격 도구와 서비스를 거래하는 산업 생태계를 형성했다. 이들도 최소 비용으로 최대 수익을 추구한다. 공격 비용이 낮아질수록 더 많은 기업과"
     },
     {
       "title": "AI 표준, 시장 속도 맞춘다…산업 AI 표준 포럼 '사실상 표준분과' 신설",
